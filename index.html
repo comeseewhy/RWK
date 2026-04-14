@@ -1,1 +1,126 @@
-{}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1, viewport-fit=cover"
+  />
+  <title>RWK Spatial Viewer</title>
+  <meta
+    name="description"
+    content="RWK spatial viewer for operational map data, boundaries, and exported job records."
+  />
+
+  <link
+    rel="stylesheet"
+    href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+    integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
+    crossorigin=""
+  />
+  <link rel="stylesheet" href="./style.css" />
+</head>
+<body>
+  <div class="app-shell">
+    <header class="topbar">
+      <div class="topbar__title-wrap">
+        <h1 class="topbar__title">RWK</h1>
+        <p class="topbar__subtitle">Operational spatial viewer</p>
+      </div>
+
+      <button id="refreshButton" class="button button--primary" type="button">
+        Refresh data
+      </button>
+    </header>
+
+    <main class="layout">
+      <section class="map-section">
+        <div id="map" aria-label="Map"></div>
+      </section>
+
+      <aside class="panel" aria-label="Map controls and status">
+        <section class="panel-card">
+          <h2 class="panel-card__title">Status</h2>
+          <dl class="stats-list">
+            <div class="stats-row">
+              <dt>App</dt>
+              <dd id="appStatus">Booting…</dd>
+            </div>
+            <div class="stats-row">
+              <dt>Manifest</dt>
+              <dd id="manifestStatus">Pending</dd>
+            </div>
+            <div class="stats-row">
+              <dt>Boundaries</dt>
+              <dd id="boundariesStatus">Pending</dd>
+            </div>
+            <div class="stats-row">
+              <dt>Events CSV</dt>
+              <dd id="eventsStatus">Pending</dd>
+            </div>
+            <div class="stats-row">
+              <dt>Export CSV</dt>
+              <dd id="exportStatus">Pending</dd>
+            </div>
+            <div class="stats-row">
+              <dt>Joined rows</dt>
+              <dd id="joinedCount">0</dd>
+            </div>
+            <div class="stats-row">
+              <dt>Updated</dt>
+              <dd id="updatedAt">—</dd>
+            </div>
+          </dl>
+        </section>
+
+        <section class="panel-card">
+          <h2 class="panel-card__title">Selection</h2>
+          <dl class="stats-list">
+            <div class="stats-row">
+              <dt>Selected boundary</dt>
+              <dd id="selectedBoundaryName">None</dd>
+            </div>
+            <div class="stats-row">
+              <dt>Boundary features</dt>
+              <dd id="boundaryFeatureCount">0</dd>
+            </div>
+            <div class="stats-row">
+              <dt>Visible markers</dt>
+              <dd id="visibleMarkerCount">0</dd>
+            </div>
+          </dl>
+
+          <div class="button-row">
+            <button id="clearBoundaryButton" class="button" type="button">
+              Clear boundary
+            </button>
+          </div>
+        </section>
+
+        <section class="panel-card">
+          <h2 class="panel-card__title">Data notes</h2>
+          <p class="panel-text">
+            This Phase 3 shell loads local boundaries first, then attempts to
+            fetch the Supabase manifest and both live CSVs.
+          </p>
+          <p class="panel-text">
+            Marker rendering only uses rows with valid latitude and longitude.
+          </p>
+        </section>
+
+        <section class="panel-card">
+          <h2 class="panel-card__title">Debug</h2>
+          <pre id="debugOutput" class="debug-output">Starting…</pre>
+        </section>
+      </aside>
+    </main>
+  </div>
+
+  <script
+    src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+    integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
+    crossorigin=""
+  ></script>
+  <script src="./app.js"></script>
+</body>
+</html>
