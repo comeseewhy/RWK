@@ -74,6 +74,79 @@
         </section>
 
         <section class="panel-card">
+          <h2 class="panel-card__title">Results</h2>
+          <dl class="stats-list">
+            <div class="stats-row">
+              <dt>Coordinate-valid rows</dt>
+              <dd id="candidateMarkerCount">0</dd>
+            </div>
+            <div class="stats-row">
+              <dt>After attribute filters</dt>
+              <dd id="filteredRowCount">0</dd>
+            </div>
+            <div class="stats-row">
+              <dt>Inside boundary</dt>
+              <dd id="boundaryMatchedCount">0</dd>
+            </div>
+            <div class="stats-row">
+              <dt>Visible markers</dt>
+              <dd id="visibleMarkerCount">0</dd>
+            </div>
+          </dl>
+          <p id="resultsMessage" class="panel-text panel-text--compact">
+            No filters applied yet.
+          </p>
+        </section>
+
+        <section class="panel-card">
+          <h2 class="panel-card__title">Population filters</h2>
+
+          <div class="form-grid">
+            <div class="form-field">
+              <label class="form-label" for="keywordInput">Keyword search</label>
+              <input
+                id="keywordInput"
+                class="input-control"
+                type="text"
+                placeholder="Search title, address, organizer, notes…"
+                autocomplete="off"
+              />
+            </div>
+
+            <div class="form-field">
+              <span class="form-label">Organizer</span>
+              <div
+                id="organizerToggleGroup"
+                class="toggle-group"
+                aria-label="Organizer filters"
+              ></div>
+            </div>
+
+            <div class="form-field">
+              <span class="form-label">Day of week</span>
+              <div
+                id="dayToggleGroup"
+                class="toggle-group"
+                aria-label="Day of week filters"
+              ></div>
+            </div>
+
+            <div class="form-field">
+              <label class="form-label" for="yearFilter">Year</label>
+              <select id="yearFilter" class="input-control">
+                <option value="all">All years</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="button-row">
+            <button id="clearFiltersButton" class="button" type="button">
+              Clear all filters
+            </button>
+          </div>
+        </section>
+
+        <section class="panel-card">
           <h2 class="panel-card__title">Selection</h2>
           <dl class="stats-list">
             <div class="stats-row">
@@ -83,10 +156,6 @@
             <div class="stats-row">
               <dt>Boundary features</dt>
               <dd id="boundaryFeatureCount">0</dd>
-            </div>
-            <div class="stats-row">
-              <dt>Visible markers</dt>
-              <dd id="visibleMarkerCount">0</dd>
             </div>
           </dl>
 
@@ -100,11 +169,12 @@
         <section class="panel-card">
           <h2 class="panel-card__title">Data notes</h2>
           <p class="panel-text">
-            This Phase 3 shell loads local boundaries first, then attempts to
-            fetch the Supabase manifest and both live CSVs.
+            This pass shifts RWK toward a deliberate population-selection workflow
+            instead of showing the raw map output by default.
           </p>
           <p class="panel-text">
-            Marker rendering only uses rows with valid latitude and longitude.
+            Markers appear only after a population filter is chosen, and boundary
+            highlighting now reflects the currently populated selection.
           </p>
         </section>
 

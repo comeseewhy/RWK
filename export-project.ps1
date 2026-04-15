@@ -28,7 +28,6 @@ $extraFiles = @(
 # "data\*.geojson"
 # "*.sql"
 $includePatterns = @(
-     "data\*.geojson"
      "docs\*.md"
 )
 
