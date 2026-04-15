@@ -1,5 +1,5 @@
 ﻿RWK Project Export
-Generated: 2026-04-15 12:51:09
+Generated: 2026-04-15 17:52:09
 Project Root: C:\Users\timet\OneDrive\Documents\GitHub\RWK
 File Count: 9
 
@@ -18,7 +18,7 @@ File Count: 9
   <title>RWK Spatial Viewer</title>
   <meta
     name="description"
-    content="RWK spatial viewer for operational map data, boundaries, and exported job records."
+    content="RWK spatial viewer for operational map data, boundaries, origins, and exported job records."
   />
 
   <link
@@ -43,17 +43,17 @@ File Count: 9
     </header>
 
     <main class="layout">
-      <section class="map-section">
+      <section class="map-section" aria-label="Map section">
         <div id="map" aria-label="Map"></div>
       </section>
 
       <aside class="panel" aria-label="Map controls and status">
-        <section class="panel-card">
-          <h2 class="panel-card__title">Status</h2>
+        <section class="panel-card" aria-labelledby="statusCardTitle">
+          <h2 id="statusCardTitle" class="panel-card__title">Status</h2>
           <dl class="stats-list">
             <div class="stats-row">
               <dt>App</dt>
-              <dd id="appStatus">Bootingâ€¦</dd>
+              <dd id="appStatus">Booting...</dd>
             </div>
             <div class="stats-row">
               <dt>Manifest</dt>
@@ -82,8 +82,8 @@ File Count: 9
           </dl>
         </section>
 
-        <section class="panel-card">
-          <h2 class="panel-card__title">Results</h2>
+        <section class="panel-card" aria-labelledby="resultsCardTitle">
+          <h2 id="resultsCardTitle" class="panel-card__title">Results</h2>
           <dl class="stats-list">
             <div class="stats-row">
               <dt>Coordinate-valid rows</dt>
@@ -102,13 +102,14 @@ File Count: 9
               <dd id="visibleMarkerCount">0</dd>
             </div>
           </dl>
+
           <p id="resultsMessage" class="panel-text panel-text--compact">
             No filters applied yet.
           </p>
         </section>
 
-        <section class="panel-card">
-          <h2 class="panel-card__title">Filters</h2>
+        <section class="panel-card" aria-labelledby="filtersCardTitle">
+          <h2 id="filtersCardTitle" class="panel-card__title">Population filters</h2>
 
           <div class="form-grid">
             <div class="form-field">
@@ -117,23 +118,45 @@ File Count: 9
                 id="keywordInput"
                 class="input-control"
                 type="text"
-                placeholder="Search title, address, organizer, notesâ€¦"
+                placeholder="Search title, address, organizer, notes..."
                 autocomplete="off"
               />
             </div>
 
             <div class="form-field">
-              <label class="form-label" for="organizerFilter">Organizer</label>
-              <select id="organizerFilter" class="input-control">
-                <option value="all">All organizers</option>
-              </select>
+              <span class="form-label">Organizer</span>
+              <div
+                id="organizerToggleGroup"
+                class="toggle-group"
+                aria-label="Organizer filters"
+              ></div>
             </div>
 
             <div class="form-field">
-              <label class="form-label" for="statusFilter">Status</label>
-              <select id="statusFilter" class="input-control">
-                <option value="all">All statuses</option>
-              </select>
+              <span class="form-label">Day of week</span>
+              <div
+                id="dayToggleGroup"
+                class="toggle-group"
+                aria-label="Day of week filters"
+              ></div>
+            </div>
+
+            <div class="form-field">
+              <span class="form-label">Visit count</span>
+              <div
+                id="visitToggleGroup"
+                class="toggle-group"
+                aria-label="Visit count filters"
+              ></div>
+            </div>
+
+            <div class="form-field">
+              <span class="form-label">Time window</span>
+              <div
+                id="timeToggleGroup"
+                class="toggle-group"
+                aria-label="Time window filters"
+              ></div>
             </div>
 
             <div class="form-field">
@@ -151,12 +174,52 @@ File Count: 9
           </div>
         </section>
 
-        <section class="panel-card">
-          <h2 class="panel-card__title">Selection</h2>
+        <section class="panel-card" aria-labelledby="originsCardTitle">
+          <h2 id="originsCardTitle" class="panel-card__title">Origins</h2>
+
+          <div class="form-grid">
+            <div class="form-field">
+              <span class="form-label">Origin type</span>
+              <div
+                id="originTypeToggleGroup"
+                class="toggle-group"
+                aria-label="Origin type filters"
+              ></div>
+            </div>
+
+            <div class="form-field">
+              <span class="form-label">Selected origin</span>
+              <div
+                id="selectedOriginDisplay"
+                class="selection-pill selection-pill--empty"
+                data-origin-type=""
+              >
+                None
+              </div>
+            </div>
+          </div>
+
+          <div class="button-row">
+            <button id="clearOriginButton" class="button" type="button">
+              Clear origin
+            </button>
+          </div>
+        </section>
+
+        <section class="panel-card" aria-labelledby="selectionCardTitle">
+          <h2 id="selectionCardTitle" class="panel-card__title">Selection</h2>
           <dl class="stats-list">
             <div class="stats-row">
               <dt>Selected boundary</dt>
               <dd id="selectedBoundaryName">None</dd>
+            </div>
+            <div class="stats-row">
+              <dt>Selected origin</dt>
+              <dd id="selectedOriginName">None</dd>
+            </div>
+            <div class="stats-row">
+              <dt>Origin type</dt>
+              <dd id="selectedOriginType">â€”</dd>
             </div>
             <div class="stats-row">
               <dt>Boundary features</dt>
@@ -168,23 +231,28 @@ File Count: 9
             <button id="clearBoundaryButton" class="button" type="button">
               Clear boundary
             </button>
+            <button id="clearSelectionButton" class="button" type="button">
+              Clear all selection
+            </button>
           </div>
         </section>
 
-        <section class="panel-card">
-          <h2 class="panel-card__title">Data notes</h2>
+        <section class="panel-card" aria-labelledby="notesCardTitle">
+          <h2 id="notesCardTitle" class="panel-card__title">Data notes</h2>
           <p class="panel-text">
-            Phase 4 keeps the live pipeline intact while adding the first
-            operational inspection filters to the viewer.
+            This pass introduces origin locations as a second dataset class,
+            kept separate from job rows and rendered independently on the map.
           </p>
           <p class="panel-text">
-            Marker rendering still only uses rows with valid latitude and longitude.
+            Nearest-origin fields are derived during load so later distance
+            filtering, route-oriented sorting, and report exports can build on
+            the same runtime model.
           </p>
         </section>
 
-        <section class="panel-card">
-          <h2 class="panel-card__title">Debug</h2>
-          <pre id="debugOutput" class="debug-output">Startingâ€¦</pre>
+        <section class="panel-card" aria-labelledby="debugCardTitle">
+          <h2 id="debugCardTitle" class="panel-card__title">Debug</h2>
+          <pre id="debugOutput" class="debug-output">Starting...</pre>
         </section>
       </aside>
     </main>
@@ -216,15 +284,22 @@ File Count: 9
   --color-success: #0f766e;
   --color-warning: #b45309;
   --color-danger: #b91c1c;
+
   --shadow-soft: 0 8px 24px rgba(15, 23, 42, 0.08);
+
   --radius-lg: 18px;
   --radius-md: 12px;
   --radius-sm: 10px;
+
   --topbar-height: 72px;
   --panel-width: 380px;
+
+  --transition-fast: 120ms ease;
 }
 
-* {
+*,
+*::before,
+*::after {
   box-sizing: border-box;
 }
 
@@ -240,6 +315,7 @@ body {
 
 body {
   min-height: 100vh;
+  text-rendering: optimizeLegibility;
 }
 
 button,
@@ -255,22 +331,29 @@ textarea {
   width: 100%;
 }
 
+button {
+  -webkit-tap-highlight-color: transparent;
+}
+
 .app-shell {
   min-height: 100vh;
 }
 
 .topbar {
-  height: var(--topbar-height);
+  position: sticky;
+  top: 0;
+  z-index: 1000;
+
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
+
+  min-height: var(--topbar-height);
   padding: 12px 16px;
+
   background: var(--color-surface);
   border-bottom: 1px solid var(--color-border);
-  position: sticky;
-  top: 0;
-  z-index: 1000;
 }
 
 .topbar__title-wrap {
@@ -286,6 +369,7 @@ textarea {
 .topbar__subtitle {
   margin: 4px 0 0;
   font-size: 0.9rem;
+  line-height: 1.3;
   color: var(--color-muted);
 }
 
@@ -302,8 +386,8 @@ textarea {
 
 #map {
   width: 100%;
-  min-height: 52vh;
   height: 52vh;
+  min-height: 52vh;
   background: #dbe7f3;
 }
 
@@ -314,11 +398,11 @@ textarea {
 }
 
 .panel-card {
+  padding: 14px;
   background: var(--color-surface);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-soft);
-  padding: 14px;
 }
 
 .panel-card__title {
@@ -355,28 +439,29 @@ textarea {
   justify-content: space-between;
   align-items: flex-start;
   gap: 12px;
+
   padding-bottom: 8px;
   border-bottom: 1px solid #eef2f7;
 }
 
 .stats-row:last-child {
-  border-bottom: 0;
   padding-bottom: 0;
+  border-bottom: 0;
 }
 
 .stats-row dt {
   margin: 0;
-  color: var(--color-muted);
   font-size: 0.92rem;
   line-height: 1.35;
+  color: var(--color-muted);
 }
 
 .stats-row dd {
   margin: 0;
   text-align: right;
-  font-weight: 600;
   font-size: 0.92rem;
   line-height: 1.35;
+  font-weight: 600;
   word-break: break-word;
 }
 
@@ -388,6 +473,7 @@ textarea {
 .form-field {
   display: grid;
   gap: 6px;
+  min-width: 0;
 }
 
 .form-label {
@@ -399,12 +485,16 @@ textarea {
 .input-control {
   min-height: 42px;
   padding: 10px 12px;
+
   border: 1px solid var(--color-border);
   border-radius: var(--radius-sm);
   background: #fff;
   color: var(--color-text);
-  transition: border-color 120ms ease, box-shadow 120ms ease,
-    background-color 120ms ease;
+
+  transition:
+    border-color var(--transition-fast),
+    box-shadow var(--transition-fast),
+    background-color var(--transition-fast);
 }
 
 .input-control::placeholder {
@@ -421,6 +511,174 @@ textarea {
   box-shadow: 0 0 0 3px rgba(29, 78, 216, 0.12);
 }
 
+.toggle-group {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.toggle-chip {
+  min-height: 38px;
+  padding: 8px 12px;
+
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  background: #fff;
+  color: var(--color-text);
+  cursor: pointer;
+
+  transition:
+    border-color var(--transition-fast),
+    background-color var(--transition-fast),
+    color var(--transition-fast),
+    box-shadow var(--transition-fast),
+    opacity var(--transition-fast);
+}
+
+.toggle-chip:hover {
+  border-color: var(--color-border-strong);
+}
+
+.toggle-chip:focus {
+  outline: none;
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px rgba(29, 78, 216, 0.12);
+}
+
+.toggle-chip.is-active {
+  border-color: var(--color-primary);
+  background: var(--color-primary-soft);
+  color: var(--color-primary-strong);
+  box-shadow: 0 0 0 3px rgba(29, 78, 216, 0.08);
+}
+
+.toggle-chip--day {
+  border-color: color-mix(in srgb, var(--day-color) 35%, #cbd5e1);
+}
+
+.toggle-chip--day.is-active {
+  border-color: var(--day-color);
+  background: color-mix(in srgb, var(--day-color) 14%, white);
+  color: var(--day-color);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--day-color) 14%, white);
+}
+
+.toggle-chip--visit {
+  border-color: #d1d5db;
+}
+
+.toggle-chip--visit.is-empty,
+.toggle-chip--visit:disabled {
+  cursor: not-allowed;
+  opacity: 1;
+  border-color: #d1d5db;
+  background: #f3f4f6;
+  color: #9ca3af;
+  box-shadow: none;
+}
+
+.toggle-chip--visit.is-empty:hover,
+.toggle-chip--visit:disabled:hover {
+  border-color: #d1d5db;
+  background: #f3f4f6;
+}
+
+.toggle-chip--visit.is-available:not(.is-active) {
+  border-color: #f59e0b;
+  background: #fffaf0;
+  color: #b45309;
+  box-shadow: 0 0 0 2px rgba(245, 158, 11, 0.1);
+}
+
+.toggle-chip--visit.is-available:not(.is-active):hover {
+  border-color: #d97706;
+  background: #fffbeb;
+}
+
+.toggle-chip--visit.is-active {
+  border-color: #d97706;
+  background: #fef3c7;
+  color: #92400e;
+  box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.16);
+}
+
+.toggle-chip--visit.is-active:hover {
+  border-color: #b45309;
+}
+
+#timeToggleGroup .toggle-chip.is-active {
+  border-color: var(--color-success);
+  background: color-mix(in srgb, var(--color-success) 12%, white);
+  color: var(--color-success);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-success) 12%, white);
+}
+
+.toggle-chip--origin {
+  border-color: color-mix(in srgb, var(--origin-color, #94a3b8) 35%, #cbd5e1);
+}
+
+.toggle-chip--origin:hover {
+  border-color: var(--origin-color, #64748b);
+}
+
+.toggle-chip--origin.is-active {
+  border-color: var(--origin-color, #475569);
+  background: color-mix(in srgb, var(--origin-color, #94a3b8) 14%, white);
+  color: var(--origin-color, #475569);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--origin-color, #94a3b8) 14%, white);
+}
+
+.selection-pill {
+  min-height: 42px;
+  display: flex;
+  align-items: center;
+  padding: 10px 12px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface-muted);
+  color: var(--color-text);
+  font-size: 0.92rem;
+  line-height: 1.35;
+  font-weight: 600;
+}
+
+.selection-pill--empty,
+.selection-pill.is-empty {
+  color: var(--color-muted);
+  font-weight: 500;
+}
+
+.selection-pill[data-origin-type="warehouse"] {
+  border-color: rgba(15, 118, 110, 0.28);
+  background: rgba(20, 184, 166, 0.08);
+  color: #0f766e;
+}
+
+.selection-pill[data-origin-type="showroom"] {
+  border-color: rgba(124, 58, 237, 0.28);
+  background: rgba(167, 139, 250, 0.1);
+  color: #6d28d9;
+}
+
+.selection-pill[data-origin-type="office"] {
+  border-color: rgba(37, 99, 235, 0.24);
+  background: rgba(96, 165, 250, 0.1);
+  color: #1d4ed8;
+}
+
+.selection-pill[data-origin-type="supplier"] {
+  border-color: rgba(180, 83, 9, 0.26);
+  background: rgba(245, 158, 11, 0.1);
+  color: #b45309;
+}
+
+.selection-pill[data-origin-type="other"] {
+  border-color: rgba(71, 85, 105, 0.24);
+  background: rgba(148, 163, 184, 0.12);
+  color: #475569;
+}
+
 .button-row {
   display: flex;
   flex-wrap: wrap;
@@ -429,15 +687,20 @@ textarea {
 }
 
 .button {
+  min-height: 42px;
+  padding: 10px 14px;
+
   border: 1px solid var(--color-border);
+  border-radius: 999px;
   background: #fff;
   color: var(--color-text);
-  border-radius: 999px;
-  padding: 10px 14px;
   cursor: pointer;
-  min-height: 42px;
-  transition: border-color 120ms ease, background-color 120ms ease,
-    color 120ms ease, opacity 120ms ease;
+
+  transition:
+    border-color var(--transition-fast),
+    background-color var(--transition-fast),
+    color var(--transition-fast),
+    opacity var(--transition-fast);
 }
 
 .button:hover {
@@ -450,14 +713,14 @@ textarea {
 }
 
 .button--primary {
-  background: var(--color-primary);
   border-color: var(--color-primary);
+  background: var(--color-primary);
   color: #fff;
 }
 
 .button--primary:hover {
-  background: var(--color-primary-strong);
   border-color: var(--color-primary-strong);
+  background: var(--color-primary-strong);
 }
 
 .debug-output {
@@ -466,9 +729,11 @@ textarea {
   max-height: 260px;
   overflow: auto;
   padding: 12px;
+
+  border-radius: var(--radius-md);
   background: #0f172a;
   color: #dbeafe;
-  border-radius: var(--radius-md);
+
   font-size: 0.8rem;
   line-height: 1.45;
   white-space: pre-wrap;
@@ -476,9 +741,9 @@ textarea {
 }
 
 .leaflet-popup-content {
+  min-width: 240px;
   margin: 10px 12px;
   line-height: 1.45;
-  min-width: 240px;
 }
 
 .popup-title {
@@ -503,6 +768,7 @@ textarea {
   margin: 0 0 6px;
   font-size: 0.8rem;
   font-weight: 700;
+  line-height: 1.3;
   letter-spacing: 0.02em;
   text-transform: uppercase;
   color: var(--color-muted);
@@ -514,19 +780,37 @@ textarea {
 }
 
 .popup-label {
-  color: var(--color-muted);
   font-weight: 600;
+  color: var(--color-muted);
 }
 
 .popup-meta--muted {
-  color: var(--color-muted);
   font-size: 0.84rem;
+  color: var(--color-muted);
 }
 
 .popup-notes {
   margin: 6px 0 0;
   font-size: 0.9rem;
   line-height: 1.45;
+}
+
+@media (max-width: 640px) {
+  .toggle-chip {
+    min-height: 40px;
+  }
+
+  .panel {
+    padding: 10px;
+  }
+
+  .panel-card {
+    padding: 12px;
+  }
+
+  .button-row .button {
+    flex: 1 1 auto;
+  }
 }
 
 @media (min-width: 900px) {
@@ -539,8 +823,8 @@ textarea {
   }
 
   #map {
-    height: calc(100vh - var(--topbar-height));
     min-height: calc(100vh - var(--topbar-height));
+    height: calc(100vh - var(--topbar-height));
   }
 
   .panel {
@@ -557,11 +841,10 @@ textarea {
 
 const CONFIG = {
   boundariesUrl: "./data/boundaries.geojson",
+  originsUrl: "./data/origins.json",
 
   /*
-    REQUIRED:
     Set this to your public Supabase Storage bucket base path.
-
     Example:
     https://YOUR_PROJECT_ID.supabase.co/storage/v1/object/public/live-data
   */
@@ -575,51 +858,127 @@ const CONFIG = {
   defaultMapCenter: [43.6532, -79.3832],
   defaultMapZoom: 9,
 
-  fitBoundsPadding: [24, 24],
-  markerRadius: 6
+  fitBoundsPaddingDefault: [24, 24],
+  fitBoundsPaddingBoundarySelected: [28, 28],
+
+  markerRadius: 6,
+  originMarkerRadius: 9,
+  keywordDebounceMs: 180,
+
+  popupEmptyValue: "â€”",
+  unknownLabel: "Unknown",
+
+  organizerAliases: {
+    "e8gq6ptj73o1p36cm3cl6c42j4@group.calendar.google.com": "INSTALL",
+    "bfqu2a3urejcnobl2p80tebo0g@group.calendar.google.com": "TEMPLATE"
+  },
+
+  originTypeMeta: {
+    warehouse: {
+      label: "Warehouse",
+      color: "#0f766e",
+      fillColor: "#14b8a6"
+    },
+    showroom: {
+      label: "Showroom",
+      color: "#7c3aed",
+      fillColor: "#a78bfa"
+    },
+    office: {
+      label: "Office",
+      color: "#2563eb",
+      fillColor: "#60a5fa"
+    },
+    supplier: {
+      label: "Supplier",
+      color: "#b45309",
+      fillColor: "#f59e0b"
+    },
+    other: {
+      label: "Other",
+      color: "#475569",
+      fillColor: "#94a3b8"
+    }
+  },
+
+  dayMeta: {
+    sunday: { index: 0, label: "Sun", color: "#dc2626" },
+    monday: { index: 1, label: "Mon", color: "#ea580c" },
+    tuesday: { index: 2, label: "Tue", color: "#ca8a04" },
+    wednesday: { index: 3, label: "Wed", color: "#16a34a" },
+    thursday: { index: 4, label: "Thu", color: "#0891b2" },
+    friday: { index: 5, label: "Fri", color: "#2563eb" },
+    saturday: { index: 6, label: "Sat", color: "#7c3aed" }
+  },
+
+  visitBucketMeta: Array.from({ length: 10 }, (_, index) => {
+    const value = String(index + 1);
+    return {
+      value,
+      label: `${value}x`,
+      order: index + 1
+    };
+  }),
+
+  timeWindowMeta: [
+    { value: "all", label: "All", order: 0 },
+    { value: "upcoming", label: "Upcoming", order: 1 },
+    { value: "last_7_days", label: "Last 7d", order: 2 },
+    { value: "last_30_days", label: "Last 30d", order: 3 }
+  ]
 };
+
+const DEFAULT_FILTERS = Object.freeze({
+  keyword: "",
+  organizers: [],
+  days: [],
+  year: "all",
+  visitBuckets: [],
+  timeWindow: "all"
+});
 
 const state = {
   map: null,
   boundaryLayer: null,
   markerLayer: null,
+  originMarkerLayer: null,
+
   boundariesGeojson: null,
-  selectedBoundaryLayer: null,
+  boundaryFeatureCache: [],
+  boundaryLayerByKey: new Map(),
   selectedBoundaryFeature: null,
+  selectedBoundaryLayer: null,
 
   manifest: null,
   eventsRows: [],
   exportRows: [],
   joinedRows: [],
   derivedRows: [],
+  candidateRows: [],
+  populationRows: [],
   filteredRows: [],
   visibleRows: [],
 
-  filters: {
-    keyword: "",
-    organizer: "all",
-    status: "all",
-    year: "all"
-  },
+  originRows: [],
+  visibleOriginRows: [],
+  selectedOriginId: "",
+
+  filters: cloneDefaultFilters(),
+
+  boundaryCounts: {},
+  siteStats: new Map(),
 
   isLoading: false,
   lastError: null,
 
-  lastLoadSummary: {
-    boundaryFeatureCount: 0,
-    candidateMarkerRows: 0,
-    matchedRows: 0,
-    unmatchedExportRows: 0,
-    eventRowsWithoutKey: 0,
-    exportRowsWithoutKey: 0,
-    rowsMissingCoordinates: 0,
-    filteredRows: 0,
-    boundaryMatchedRows: 0,
-    visibleRows: 0
-  }
+  timeContext: createEmptyTimeContext(),
+
+  lastLoadSummary: createEmptyLoadSummary()
 };
 
-const ui = {};
+const ui = {
+  keywordDebounceTimer: null
+};
 
 document.addEventListener("DOMContentLoaded", init);
 
@@ -633,6 +992,10 @@ async function init() {
 
   await loadApp();
 }
+
+/* ==========================================================================
+   Initialization
+   ========================================================================== */
 
 function cacheUi() {
   ui.appStatus = document.getElementById("appStatus");
@@ -653,8 +1016,10 @@ function cacheUi() {
   ui.boundaryFeatureCount = document.getElementById("boundaryFeatureCount");
 
   ui.keywordInput = document.getElementById("keywordInput");
-  ui.organizerFilter = document.getElementById("organizerFilter");
-  ui.statusFilter = document.getElementById("statusFilter");
+  ui.organizerToggleGroup = document.getElementById("organizerToggleGroup");
+  ui.dayToggleGroup = document.getElementById("dayToggleGroup");
+  ui.visitToggleGroup = document.getElementById("visitToggleGroup");
+  ui.timeToggleGroup = document.getElementById("timeToggleGroup");
   ui.yearFilter = document.getElementById("yearFilter");
   ui.clearFiltersButton = document.getElementById("clearFiltersButton");
 
@@ -670,22 +1035,20 @@ function bindUi() {
 
   ui.clearBoundaryButton?.addEventListener("click", () => {
     clearBoundarySelection();
-    applyFiltersAndRender({ fitToVisible: true });
+    tryFitMapToLayer(state.boundaryLayer, CONFIG.fitBoundsPaddingDefault);
+    applyFiltersAndRender({ fitToVisible: false });
   });
 
   ui.keywordInput?.addEventListener("input", () => {
     state.filters.keyword = ui.keywordInput.value.trim();
-    applyFiltersAndRender();
-  });
 
-  ui.organizerFilter?.addEventListener("change", () => {
-    state.filters.organizer = ui.organizerFilter.value;
-    applyFiltersAndRender();
-  });
+    if (ui.keywordDebounceTimer) {
+      clearTimeout(ui.keywordDebounceTimer);
+    }
 
-  ui.statusFilter?.addEventListener("change", () => {
-    state.filters.status = ui.statusFilter.value;
-    applyFiltersAndRender();
+    ui.keywordDebounceTimer = setTimeout(() => {
+      applyFiltersAndRender();
+    }, CONFIG.keywordDebounceMs);
   });
 
   ui.yearFilter?.addEventListener("change", () => {
@@ -695,13 +1058,14 @@ function bindUi() {
 
   ui.clearFiltersButton?.addEventListener("click", () => {
     clearFilters();
-    applyFiltersAndRender({ fitToVisible: true });
+    applyFiltersAndRender({ fitToVisible: false });
   });
 }
 
 function initMap() {
   state.map = L.map("map", {
-    zoomControl: true
+    zoomControl: true,
+    preferCanvas: true
   }).setView(CONFIG.defaultMapCenter, CONFIG.defaultMapZoom);
 
   L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
@@ -710,7 +1074,12 @@ function initMap() {
   }).addTo(state.map);
 
   state.markerLayer = L.layerGroup().addTo(state.map);
+  state.originMarkerLayer = L.layerGroup().addTo(state.map);
 }
+
+/* ==========================================================================
+   Load orchestration
+   ========================================================================== */
 
 async function loadApp() {
   if (state.isLoading) {
@@ -720,24 +1089,26 @@ async function loadApp() {
 
   state.isLoading = true;
   state.lastError = null;
-
   disableButton(ui.refreshButton, true);
 
-  resetUiForLoad();
   clearDebug();
+  resetUiForLoad();
   resetRuntimeData();
 
   logDebug("Reload started.");
   logDebug(`Boundaries URL: ${CONFIG.boundariesUrl}`);
+  logDebug(`Origins URL: ${CONFIG.originsUrl}`);
   logDebug(`Supabase base URL: ${CONFIG.supabaseBaseUrl || "[blank]"}`);
 
   try {
     await loadBoundaries();
+    await loadOrigins();
     await loadRemoteData();
+    setTimeContext();
     joinData();
     deriveRows();
     populateFilterOptions();
-    applyFiltersAndRender({ fitToVisible: true });
+    applyFiltersAndRender({ fitToVisible: false });
     updateSummaryUi();
     finalizeAppStatus();
     logDebug("Reload finished successfully.");
@@ -760,14 +1131,14 @@ function resetUiForLoad() {
   setStatus("eventsStatus", "Pending");
   setStatus("exportStatus", "Pending");
 
-  setText(ui.updatedAt, "â€”");
+  setText(ui.updatedAt, CONFIG.popupEmptyValue);
   setText(ui.joinedCount, "0");
   setText(ui.candidateMarkerCount, "0");
   setText(ui.filteredRowCount, "0");
   setText(ui.boundaryMatchedCount, "0");
   setText(ui.visibleMarkerCount, "0");
   setText(ui.selectedBoundaryName, "None");
-  setText(ui.resultsMessage, "Loading live dataâ€¦");
+  setText(ui.resultsMessage, "Loading live data...");
 }
 
 function resetRuntimeData() {
@@ -776,149 +1147,134 @@ function resetRuntimeData() {
   state.exportRows = [];
   state.joinedRows = [];
   state.derivedRows = [];
+  state.candidateRows = [];
+  state.populationRows = [];
   state.filteredRows = [];
   state.visibleRows = [];
+
+  state.originRows = [];
+  state.visibleOriginRows = [];
+  state.selectedOriginId = "";
+
   state.boundariesGeojson = null;
+  state.boundaryFeatureCache = [];
+  state.boundaryLayerByKey = new Map();
   state.selectedBoundaryFeature = null;
   state.selectedBoundaryLayer = null;
+
+  state.boundaryCounts = {};
+  state.siteStats = new Map();
+
+  state.timeContext = createEmptyTimeContext();
+  state.lastLoadSummary = createEmptyLoadSummary();
+
   clearFilters(false);
-
-  state.lastLoadSummary = {
-    boundaryFeatureCount: 0,
-    candidateMarkerRows: 0,
-    matchedRows: 0,
-    unmatchedExportRows: 0,
-    eventRowsWithoutKey: 0,
-    exportRowsWithoutKey: 0,
-    rowsMissingCoordinates: 0,
-    filteredRows: 0,
-    boundaryMatchedRows: 0,
-    visibleRows: 0
-  };
-
   resetFilterControls();
   resetFilterOptions();
 
   if (state.markerLayer) {
     state.markerLayer.clearLayers();
   }
+
+  if (state.originMarkerLayer) {
+    state.originMarkerLayer.clearLayers();
+  }
+}
+
+function setTimeContext() {
+  const now = new Date();
+  const startOfToday = new Date(now);
+  startOfToday.setHours(0, 0, 0, 0);
+
+  const endOfToday = new Date(now);
+  endOfToday.setHours(23, 59, 59, 999);
+
+  const last7Start = new Date(startOfToday);
+  last7Start.setDate(last7Start.getDate() - 7);
+
+  const last30Start = new Date(startOfToday);
+  last30Start.setDate(last30Start.getDate() - 30);
+
+  state.timeContext = {
+    now,
+    startOfToday,
+    endOfToday,
+    last7Start,
+    last30Start
+  };
+
+  logDebug(
+    [
+      "Time context set.",
+      `now=${now.toISOString()}`,
+      `start_of_today=${startOfToday.toISOString()}`,
+      `last_7_start=${last7Start.toISOString()}`,
+      `last_30_start=${last30Start.toISOString()}`
+    ].join(" ")
+  );
 }
 
 async function loadBoundaries() {
   logDebug(`Loading boundaries from ${CONFIG.boundariesUrl}`);
 
-  const response = await fetch(CONFIG.boundariesUrl, {
-    cache: "no-store"
-  });
-
+  const response = await fetch(CONFIG.boundariesUrl, { cache: "no-store" });
   if (!response.ok) {
     throw new Error(`Failed to load boundaries GeoJSON (${response.status})`);
   }
 
   const geojson = await response.json();
   state.boundariesGeojson = geojson;
+  state.boundaryFeatureCache = buildBoundaryFeatureCache(geojson);
 
   if (state.boundaryLayer) {
     state.map.removeLayer(state.boundaryLayer);
   }
 
+  state.boundaryLayerByKey = new Map();
+
   state.boundaryLayer = L.geoJSON(geojson, {
-    style: boundaryStyleDefault,
+    style: (feature) => getBoundaryStyle(feature, false),
     onEachFeature: onEachBoundaryFeature
   }).addTo(state.map);
 
   const featureCount = Array.isArray(geojson.features) ? geojson.features.length : 0;
-
   state.lastLoadSummary.boundaryFeatureCount = featureCount;
 
   setStatus("boundariesStatus", `Loaded (${featureCount})`);
   setText(ui.boundaryFeatureCount, String(featureCount));
   logDebug(`Boundaries loaded: ${featureCount} feature(s).`);
 
-  tryFitMapToLayer(state.boundaryLayer);
+  tryFitMapToLayer(state.boundaryLayer, CONFIG.fitBoundsPaddingDefault);
 }
 
-function boundaryStyleDefault() {
-  return {
-    color: "#2563eb",
-    weight: 1.2,
-    opacity: 0.9,
-    fillColor: "#60a5fa",
-    fillOpacity: 0.08
-  };
-}
+async function loadOrigins() {
+  logDebug(`Loading origins from ${CONFIG.originsUrl}`);
 
-function boundaryStyleHover() {
-  return {
-    color: "#1d4ed8",
-    weight: 2.4,
-    opacity: 1,
-    fillColor: "#3b82f6",
-    fillOpacity: 0.16
-  };
-}
-
-function boundaryStyleSelected() {
-  return {
-    color: "#0f766e",
-    weight: 2.8,
-    opacity: 1,
-    fillColor: "#14b8a6",
-    fillOpacity: 0.2
-  };
-}
-
-function onEachBoundaryFeature(feature, layer) {
-  layer.on({
-    mouseover: () => {
-      if (state.selectedBoundaryLayer !== layer) {
-        layer.setStyle(boundaryStyleHover());
-      }
-    },
-    mouseout: () => {
-      if (state.selectedBoundaryLayer !== layer) {
-        layer.setStyle(boundaryStyleDefault());
-      }
-    },
-    click: () => {
-      selectBoundary(feature, layer);
-      applyFiltersAndRender({ fitToVisible: true });
-    }
+  const response = await fetch(withNoCacheStamp(CONFIG.originsUrl), {
+    cache: "no-store"
   });
 
-  const boundaryName = getBoundaryName(feature) || "Boundary";
-  layer.bindTooltip(boundaryName, { sticky: true });
-}
-
-function selectBoundary(feature, layer) {
-  if (state.selectedBoundaryLayer === layer) {
-    clearBoundarySelection();
-    return;
+  if (!response.ok) {
+    throw new Error(`Failed to load origins JSON (${response.status})`);
   }
 
-  clearBoundarySelection(false);
+  const rawOrigins = await response.json();
+  validateOrigins(rawOrigins);
 
-  state.selectedBoundaryFeature = feature;
-  state.selectedBoundaryLayer = layer;
-  layer.setStyle(boundaryStyleSelected());
+  state.originRows = rawOrigins.map((origin) => deriveOriginRow(origin));
+  state.lastLoadSummary.originRows = state.originRows.length;
 
-  const boundaryName = getBoundaryName(feature) || "Boundary";
-  setText(ui.selectedBoundaryName, boundaryName);
-  logDebug(`Boundary selected: ${boundaryName}`);
-}
+  const activeOrigins = state.originRows.filter((origin) => origin._isActive);
+  const coordinateValidOrigins = activeOrigins.filter((origin) => origin._hasCoordinates);
 
-function clearBoundarySelection(resetText = true) {
-  if (state.selectedBoundaryLayer) {
-    state.selectedBoundaryLayer.setStyle(boundaryStyleDefault());
-  }
-
-  state.selectedBoundaryFeature = null;
-  state.selectedBoundaryLayer = null;
-
-  if (resetText) {
-    setText(ui.selectedBoundaryName, "None");
-    logDebug("Boundary selection cleared.");
-  }
+  logDebug(
+    [
+      "Origins loaded.",
+      `total=${state.originRows.length}`,
+      `active=${activeOrigins.length}`,
+      `coordinate_valid=${coordinateValidOrigins.length}`
+    ].join(" ")
+  );
 }
 
 async function loadRemoteData() {
@@ -926,11 +1282,6 @@ async function loadRemoteData() {
     setStatus("manifestStatus", "Not configured");
     setStatus("eventsStatus", "Not configured");
     setStatus("exportStatus", "Not configured");
-
-    state.manifest = null;
-    state.eventsRows = [];
-    state.exportRows = [];
-
     logDebug("Supabase base URL is blank. Skipping remote fetch.");
     return;
   }
@@ -952,13 +1303,11 @@ async function loadRemoteData() {
   }
 
   logDebug(`Fetching events CSV: ${eventsUrl}`);
-  const eventsCsv = await fetchText(eventsUrl);
-  state.eventsRows = parseCsv(eventsCsv);
+  state.eventsRows = parseCsv(await fetchText(eventsUrl));
   setStatus("eventsStatus", `Loaded (${state.eventsRows.length})`);
 
   logDebug(`Fetching export CSV: ${exportUrl}`);
-  const exportCsv = await fetchText(exportUrl);
-  state.exportRows = parseCsv(exportCsv);
+  state.exportRows = parseCsv(await fetchText(exportUrl));
   setStatus("exportStatus", `Loaded (${state.exportRows.length})`);
 
   logDebug(
@@ -984,6 +1333,16 @@ function validateManifest(manifest) {
   }
 }
 
+function validateOrigins(origins) {
+  if (!Array.isArray(origins)) {
+    throw new Error("Origins data must be a JSON array.");
+  }
+}
+
+/* ==========================================================================
+   Join + derive
+   ========================================================================== */
+
 function joinData() {
   const eventIndex = new Map();
   let eventRowsWithoutKey = 0;
@@ -991,12 +1350,10 @@ function joinData() {
 
   for (const row of state.eventsRows) {
     const joinKey = getJoinKey(row);
-
     if (!joinKey) {
       eventRowsWithoutKey += 1;
       continue;
     }
-
     eventIndex.set(joinKey, row);
   }
 
@@ -1014,7 +1371,6 @@ function joinData() {
     }
 
     const eventRow = joinKey ? eventIndex.get(joinKey) : null;
-
     if (!eventRow) {
       unmatchedExportCount += 1;
     } else {
@@ -1023,7 +1379,7 @@ function joinData() {
 
     const joinedRow = buildJoinedRow(exportRow, eventRow);
 
-    if (Number.isFinite(joinedRow._latitude) && Number.isFinite(joinedRow._longitude)) {
+    if (joinedRow._hasCoordinates) {
       candidateMarkerRows += 1;
     } else {
       rowsMissingCoordinates += 1;
@@ -1075,6 +1431,8 @@ function buildJoinedRow(exportRow, eventRow) {
       exportRow.decimal_longitude
   );
 
+  const hasCoordinates = Number.isFinite(latitude) && Number.isFinite(longitude);
+
   const title =
     firstNonEmpty(
       exportRow.title,
@@ -1093,160 +1451,1011 @@ function buildJoinedRow(exportRow, eventRow) {
     _joinKey: getJoinKey(exportRow) || getJoinKey(eventRow),
     _title: title,
     _latitude: latitude,
-    _longitude: longitude
+    _longitude: longitude,
+    _hasCoordinates: hasCoordinates
   };
 }
 
 function deriveRows() {
-  state.derivedRows = state.joinedRows.map((row) => {
-    const addressText = composeAddress(row);
-    const organizerText = firstNonEmpty(
-      row.organizer,
-      row.creator,
-      row.created_by,
-      row.owner,
-      row.assigned_to
-    );
+  const baseRows = state.joinedRows.map((row) => deriveRow(row));
 
-    const statusText = firstNonEmpty(row.status, row.event_status, row.state);
-    const notesText = firstNonEmpty(row.notes, row.description, row.memo);
-    const dateDisplay = getDisplayDate(row);
-    const parsedDate = parsePossibleDate(
-      firstNonEmpty(
-        row.date,
-        row.start_date,
-        row.event_date,
-        row.start_time,
-        row.created_at,
-        row.updated_at
-      )
-    );
+  enrichRowsWithBoundaryMembership(baseRows);
+  enrichRowsWithVisitAnalytics(baseRows);
+  enrichRowsWithKeywordBlobs(baseRows);
+  enrichRowsWithNearestOrigins(baseRows);
 
-    const derivedYear = parsedDate ? String(parsedDate.getFullYear()) : "";
-    const keywordBlob = normalizeText(
+  state.derivedRows = baseRows;
+  state.candidateRows = baseRows.filter((row) => row._hasCoordinates);
+
+  logDebug(`Derived runtime rows: ${state.derivedRows.length}`);
+  logDebug(
+    [
+      "Derived caches ready.",
+      `candidate_rows=${state.candidateRows.length}`,
+      `distinct_sites=${state.lastLoadSummary.distinctSites}`,
+      `rows_with_boundary=${state.lastLoadSummary.candidateRowsWithBoundary}`,
+      `rows_without_boundary=${state.lastLoadSummary.candidateRowsWithoutBoundary}`
+    ].join(" ")
+  );
+}
+
+function deriveRow(row) {
+  const addressText = composeAddress(row);
+
+  const rawOrganizer = firstNonEmpty(
+    row.calendar_id,
+    row.organizer,
+    row.creator,
+    row.created_by,
+    row.owner,
+    row.assigned_to
+  );
+
+  const organizerText = getOrganizerLabel(rawOrganizer);
+  const notesText = firstNonEmpty(row.notes, row.description, row.memo);
+
+  const parsedDate = parsePossibleDate(
+    firstNonEmpty(
+      row.date,
+      row.start_date,
+      row.event_date,
+      row.start_time,
+      row.created_at,
+      row.updated_at
+    )
+  );
+
+  const dateDisplay = getDisplayDate(row, parsedDate);
+  const derivedYear = parsedDate ? String(parsedDate.getFullYear()) : "";
+  const dayInfo = getDayInfo(parsedDate);
+  const timeInfo = getTimeInfo(parsedDate);
+
+  return {
+    ...row,
+    _addressText: addressText,
+    _organizerText: organizerText || CONFIG.unknownLabel,
+    _organizerKey: normalizeText(organizerText) || "unknown",
+    _organizerRaw: rawOrganizer || "",
+    _notesText: notesText,
+
+    _parsedDate: parsedDate,
+    _dateDisplay: dateDisplay,
+    _year: derivedYear,
+
+    _dayKey: dayInfo.key,
+    _dayLabel: dayInfo.label,
+    _dayIndex: dayInfo.index,
+    _dayColor: dayInfo.color,
+
+    _siteKey: buildSiteKey(row),
+    _visitCount: 0,
+    _visitBucket: "",
+    _visitBucketLabel: "",
+
+    _boundaryKey: "",
+    _boundaryName: "",
+
+    _nearestOriginId: "",
+    _nearestOriginName: "",
+    _nearestOriginType: "",
+    _nearestOriginDistanceKm: null,
+
+    _hasParsedDate: timeInfo.hasParsedDate,
+    _isDateOnly: timeInfo.isDateOnly,
+    _isUpcoming: timeInfo.isUpcoming,
+    _daysFromToday: timeInfo.daysFromToday,
+    _timeBucket: timeInfo.timeBucket,
+    _timeBucketLabel: timeInfo.timeBucketLabel
+  };
+}
+
+function deriveOriginRow(origin) {
+  const latitude = toNumber(origin.latitude ?? origin.lat);
+  const longitude = toNumber(origin.longitude ?? origin.lng ?? origin.lon);
+
+  const hasCoordinates = Number.isFinite(latitude) && Number.isFinite(longitude);
+  const typeKey = normalizeText(origin.type) || "other";
+  const meta = getOriginTypeMeta(typeKey);
+  const isActive = origin.isActive !== false;
+
+  const derived = {
+    ...origin,
+    _latitude: latitude,
+    _longitude: longitude,
+    _hasCoordinates: hasCoordinates,
+    _isActive: isActive,
+    _typeKey: typeKey,
+    _typeLabel: meta.label,
+    _boundaryKey: "",
+    _boundaryName: ""
+  };
+
+  if (hasCoordinates) {
+    const feature = findContainingBoundaryFeature([longitude, latitude]);
+    if (feature) {
+      derived._boundaryKey = getBoundaryKey(feature);
+      derived._boundaryName = getBoundaryName(feature) || "";
+    }
+  }
+
+  return derived;
+}
+
+function getTimeInfo(parsedDate) {
+  if (!(parsedDate instanceof Date) || Number.isNaN(parsedDate.getTime())) {
+    return {
+      hasParsedDate: false,
+      isDateOnly: false,
+      isUpcoming: false,
+      daysFromToday: null,
+      timeBucket: "",
+      timeBucketLabel: ""
+    };
+  }
+
+  const { now, startOfToday, endOfToday, last7Start, last30Start } = state.timeContext;
+
+  const isDateOnly =
+    parsedDate.getHours() === 0 &&
+    parsedDate.getMinutes() === 0 &&
+    parsedDate.getSeconds() === 0 &&
+    parsedDate.getMilliseconds() === 0;
+
+  const compareAnchor = isDateOnly ? startOfToday : now;
+  const isUpcoming = parsedDate.getTime() >= compareAnchor.getTime();
+
+  const eventDay = new Date(parsedDate);
+  eventDay.setHours(0, 0, 0, 0);
+
+  const daysFromToday = Math.round(
+    (eventDay.getTime() - startOfToday.getTime()) / 86400000
+  );
+
+  let timeBucket = "";
+
+  if (isUpcoming) {
+    timeBucket = "upcoming";
+  } else if (
+    parsedDate.getTime() >= last7Start.getTime() &&
+    parsedDate.getTime() <= endOfToday.getTime()
+  ) {
+    timeBucket = "last_7_days";
+  } else if (
+    parsedDate.getTime() >= last30Start.getTime() &&
+    parsedDate.getTime() <= endOfToday.getTime()
+  ) {
+    timeBucket = "last_30_days";
+  }
+
+  return {
+    hasParsedDate: true,
+    isDateOnly,
+    isUpcoming,
+    daysFromToday,
+    timeBucket,
+    timeBucketLabel: getTimeWindowLabel(timeBucket)
+  };
+}
+
+function enrichRowsWithBoundaryMembership(rows) {
+  let withBoundary = 0;
+  let withoutBoundary = 0;
+
+  if (!state.boundaryFeatureCache.length) {
+    for (const row of rows) {
+      row._boundaryKey = "";
+      row._boundaryName = "";
+    }
+
+    state.lastLoadSummary = {
+      ...state.lastLoadSummary,
+      candidateRowsWithBoundary: 0,
+      candidateRowsWithoutBoundary: rows.filter((row) => row._hasCoordinates).length
+    };
+    return;
+  }
+
+  for (const row of rows) {
+    if (!row._hasCoordinates) {
+      row._boundaryKey = "";
+      row._boundaryName = "";
+      continue;
+    }
+
+    const feature = findContainingBoundaryFeature([row._longitude, row._latitude]);
+
+    if (feature) {
+      row._boundaryKey = getBoundaryKey(feature);
+      row._boundaryName = getBoundaryName(feature) || "";
+      withBoundary += 1;
+    } else {
+      row._boundaryKey = "";
+      row._boundaryName = "";
+      withoutBoundary += 1;
+    }
+  }
+
+  state.lastLoadSummary = {
+    ...state.lastLoadSummary,
+    candidateRowsWithBoundary: withBoundary,
+    candidateRowsWithoutBoundary: withoutBoundary
+  };
+}
+
+function enrichRowsWithVisitAnalytics(rows) {
+  const stats = new Map();
+
+  for (const row of rows) {
+    if (!row._siteKey) {
+      continue;
+    }
+    stats.set(row._siteKey, (stats.get(row._siteKey) || 0) + 1);
+  }
+
+  state.siteStats = stats;
+
+  for (const row of rows) {
+    const visitCount = row._siteKey ? stats.get(row._siteKey) || 0 : 0;
+    const visitBucket = visitCount > 0 ? getVisitBucket(visitCount) : "";
+
+    row._visitCount = visitCount;
+    row._visitBucket = visitBucket;
+    row._visitBucketLabel = getVisitBucketLabel(visitBucket);
+  }
+
+  state.lastLoadSummary = {
+    ...state.lastLoadSummary,
+    distinctSites: stats.size
+  };
+}
+
+function enrichRowsWithKeywordBlobs(rows) {
+  for (const row of rows) {
+    row._keywordBlob = normalizeText(
       [
         row._title,
-        addressText,
-        organizerText,
-        statusText,
-        notesText,
+        row._addressText,
+        row._organizerText,
+        row._organizerRaw,
+        row._notesText,
         row.row_id,
         row.source_row_id,
         row.event_id,
-        row.calendar_id
+        row.calendar_id,
+        row._boundaryName,
+        row._dayLabel,
+        row._year,
+        row._visitBucketLabel,
+        row._visitCount,
+        row._timeBucketLabel,
+        row._nearestOriginName,
+        row._nearestOriginType
       ]
         .filter(Boolean)
         .join(" ")
     );
-
-    return {
-      ...row,
-      _addressText: addressText,
-      _organizerText: organizerText || "Unknown",
-      _organizerKey: normalizeText(organizerText) || "unknown",
-      _statusText: statusText || "Unknown",
-      _statusKey: normalizeText(statusText) || "unknown",
-      _notesText: notesText,
-      _dateDisplay: dateDisplay,
-      _parsedDate: parsedDate,
-      _year: derivedYear,
-      _hasCoordinates:
-        Number.isFinite(row._latitude) && Number.isFinite(row._longitude),
-      _keywordBlob: keywordBlob
-    };
-  });
-
-  logDebug(`Derived runtime rows: ${state.derivedRows.length}`);
+  }
 }
 
+function enrichRowsWithNearestOrigins(rows) {
+  const originCandidates = state.originRows.filter(
+    (origin) => origin._isActive && origin._hasCoordinates
+  );
+
+  if (originCandidates.length === 0) {
+    return;
+  }
+
+  for (const row of rows) {
+    if (!row._hasCoordinates) {
+      continue;
+    }
+
+    let bestOrigin = null;
+    let bestDistance = Infinity;
+
+    for (const origin of originCandidates) {
+      const distanceKm = getDistanceKm(
+        row._latitude,
+        row._longitude,
+        origin._latitude,
+        origin._longitude
+      );
+
+      if (distanceKm < bestDistance) {
+        bestDistance = distanceKm;
+        bestOrigin = origin;
+      }
+    }
+
+    if (bestOrigin) {
+      row._nearestOriginId = bestOrigin.id || "";
+      row._nearestOriginName = bestOrigin.name || "";
+      row._nearestOriginType = bestOrigin._typeLabel || "";
+      row._nearestOriginDistanceKm = bestDistance;
+    }
+  }
+}
+
+/* ==========================================================================
+   Boundary logic
+   ========================================================================== */
+
+function buildBoundaryFeatureCache(geojson) {
+  if (!Array.isArray(geojson?.features)) {
+    return [];
+  }
+
+  return geojson.features.map((feature) => ({
+    feature,
+    key: getBoundaryKey(feature),
+    bbox: getFeatureBoundingBox(feature)
+  }));
+}
+
+function onEachBoundaryFeature(feature, layer) {
+  const boundaryKey = getBoundaryKey(feature);
+  state.boundaryLayerByKey.set(boundaryKey, layer);
+
+  layer.on({
+    mouseover: () => {
+      if (state.selectedBoundaryLayer !== layer) {
+        layer.setStyle(getBoundaryStyle(feature, true));
+      }
+    },
+    mouseout: () => {
+      if (state.selectedBoundaryLayer !== layer) {
+        layer.setStyle(getBoundaryStyle(feature, false));
+      }
+    },
+    click: () => {
+      if (state.selectedBoundaryLayer === layer) {
+        clearBoundarySelection();
+        tryFitMapToLayer(state.boundaryLayer, CONFIG.fitBoundsPaddingDefault);
+        applyFiltersAndRender({ fitToVisible: false });
+        return;
+      }
+
+      selectBoundary(feature, layer);
+      tryFitMapToLayer(layer, CONFIG.fitBoundsPaddingBoundarySelected);
+      applyFiltersAndRender({ fitToVisible: false });
+    }
+  });
+
+  layer.bindTooltip(getBoundaryName(feature) || "Boundary", { sticky: true });
+}
+
+function selectBoundary(feature, layer) {
+  clearBoundarySelection(false);
+
+  state.selectedBoundaryFeature = feature;
+  state.selectedBoundaryLayer = layer;
+
+  layer.setStyle(getBoundaryStyle(feature, false));
+  setText(ui.selectedBoundaryName, getBoundaryName(feature) || "Boundary");
+  logDebug(`Boundary selected: ${getBoundaryName(feature) || "Boundary"}`);
+}
+
+function clearBoundarySelection(resetText = true) {
+  state.selectedBoundaryFeature = null;
+  state.selectedBoundaryLayer = null;
+
+  refreshBoundaryStyles();
+
+  if (resetText) {
+    setText(ui.selectedBoundaryName, "None");
+    logDebug("Boundary selection cleared.");
+  }
+}
+
+function getBoundaryStyle(feature, isHover = false) {
+  const boundaryKey = getBoundaryKey(feature);
+  const count = state.boundaryCounts[boundaryKey] || 0;
+  const isSelected =
+    state.selectedBoundaryFeature &&
+    getBoundaryKey(state.selectedBoundaryFeature) === boundaryKey;
+
+  if (isSelected) {
+    return {
+      color: "#0f766e",
+      weight: 2.8,
+      opacity: 1,
+      fillColor: count > 0 ? "#14b8a6" : "#cbd5e1",
+      fillOpacity: count > 0 ? 0.2 : 0.12
+    };
+  }
+
+  if (count > 0) {
+    return {
+      color: isHover ? "#b45309" : "#d97706",
+      weight: isHover ? 2.4 : 1.8,
+      opacity: 1,
+      fillColor: "#fbbf24",
+      fillOpacity: isHover ? 0.16 : 0.1
+    };
+  }
+
+  return {
+    color: isHover ? "#64748b" : "#94a3b8",
+    weight: isHover ? 2 : 1.2,
+    opacity: 0.95,
+    fillColor: "#e2e8f0",
+    fillOpacity: isHover ? 0.12 : 0.06
+  };
+}
+
+function refreshBoundaryStyles() {
+  if (!state.boundaryLayer) {
+    return;
+  }
+
+  state.boundaryLayer.eachLayer((layer) => {
+    if (layer.feature) {
+      layer.setStyle(getBoundaryStyle(layer.feature, false));
+    }
+  });
+}
+
+function updateBoundaryCounts(rows) {
+  const counts = {};
+
+  if (state.boundariesGeojson?.features?.length) {
+    for (const feature of state.boundariesGeojson.features) {
+      counts[getBoundaryKey(feature)] = 0;
+    }
+  }
+
+  for (const row of rows) {
+    if (row._boundaryKey) {
+      counts[row._boundaryKey] = (counts[row._boundaryKey] || 0) + 1;
+    }
+  }
+
+  state.boundaryCounts = counts;
+}
+
+function findContainingBoundaryFeature(point) {
+  if (!state.boundaryFeatureCache.length) {
+    return null;
+  }
+
+  for (const item of state.boundaryFeatureCache) {
+    if (item.bbox && !pointInBoundingBox(point, item.bbox)) {
+      continue;
+    }
+    if (pointInFeature(point, item.feature)) {
+      return item.feature;
+    }
+  }
+
+  return null;
+}
+
+function pointInFeature(point, feature) {
+  const geometry = feature?.geometry;
+  if (!geometry) {
+    return false;
+  }
+
+  if (geometry.type === "Polygon") {
+    return pointInPolygon(point, geometry.coordinates);
+  }
+
+  if (geometry.type === "MultiPolygon") {
+    return geometry.coordinates.some((polygonCoords) =>
+      pointInPolygon(point, polygonCoords)
+    );
+  }
+
+  return false;
+}
+
+function pointInPolygon(point, polygonRings) {
+  if (!Array.isArray(polygonRings) || polygonRings.length === 0) {
+    return false;
+  }
+
+  const outerRing = polygonRings[0];
+  if (!isPointInRing(point, outerRing)) {
+    return false;
+  }
+
+  for (let i = 1; i < polygonRings.length; i += 1) {
+    if (isPointInRing(point, polygonRings[i])) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
+function isPointInRing(point, ring) {
+  const x = point[0];
+  const y = point[1];
+  let inside = false;
+
+  for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+    const xi = ring[i][0];
+    const yi = ring[i][1];
+    const xj = ring[j][0];
+    const yj = ring[j][1];
+
+    const intersects =
+      yi > y !== yj > y &&
+      x < ((xj - xi) * (y - yi)) / ((yj - yi) || Number.EPSILON) + xi;
+
+    if (intersects) {
+      inside = !inside;
+    }
+  }
+
+  return inside;
+}
+
+function getFeatureBoundingBox(feature) {
+  const geometry = feature?.geometry;
+  if (!geometry?.coordinates) {
+    return null;
+  }
+
+  let minX = Infinity;
+  let minY = Infinity;
+  let maxX = -Infinity;
+  let maxY = -Infinity;
+
+  const visit = (coords) => {
+    if (!Array.isArray(coords)) {
+      return;
+    }
+
+    if (typeof coords[0] === "number" && typeof coords[1] === "number") {
+      const [x, y] = coords;
+      if (x < minX) minX = x;
+      if (y < minY) minY = y;
+      if (x > maxX) maxX = x;
+      if (y > maxY) maxY = y;
+      return;
+    }
+
+    for (const child of coords) {
+      visit(child);
+    }
+  };
+
+  visit(geometry.coordinates);
+
+  if (
+    !Number.isFinite(minX) ||
+    !Number.isFinite(minY) ||
+    !Number.isFinite(maxX) ||
+    !Number.isFinite(maxY)
+  ) {
+    return null;
+  }
+
+  return [minX, minY, maxX, maxY];
+}
+
+function pointInBoundingBox(point, bbox) {
+  const [x, y] = point;
+  const [minX, minY, maxX, maxY] = bbox;
+  return x >= minX && x <= maxX && y >= minY && y <= maxY;
+}
+
+function getBoundaryName(feature) {
+  if (!feature?.properties) {
+    return "";
+  }
+
+  return (
+    feature.properties.name ||
+    feature.properties.NAME ||
+    feature.properties.municipality ||
+    feature.properties.MUNICIPALITY ||
+    feature.properties.region ||
+    feature.properties.REGION ||
+    feature.properties.LEGAL_NAME ||
+    ""
+  );
+}
+
+function getBoundaryKey(feature) {
+  if (!feature) {
+    return "";
+  }
+
+  const props = feature.properties || {};
+  return String(
+    props.id ||
+      props.ID ||
+      props.objectid ||
+      props.OBJECTID ||
+      props.munid ||
+      props.MUNID ||
+      getBoundaryName(feature)
+  ).trim();
+}
+
+/* ==========================================================================
+   Filter options + filter application
+   ========================================================================== */
+
 function populateFilterOptions() {
-  populateSelect(
-    ui.organizerFilter,
-    "All organizers",
-    collectUniqueOptions(state.derivedRows, "_organizerKey", "_organizerText", {
-      excludeKeys: ["unknown"]
-    })
+  const organizerOptions = collectUniqueOptions(
+    state.candidateRows,
+    "_organizerKey",
+    "_organizerText",
+    { excludeKeys: ["unknown"] }
   );
 
-  populateSelect(
-    ui.statusFilter,
-    "All statuses",
-    collectUniqueOptions(state.derivedRows, "_statusKey", "_statusText", {
-      excludeKeys: ["unknown"]
-    })
-  );
+  const dayOptions = collectDayOptions(state.candidateRows);
+  const yearOptions = collectYearOptions(state.candidateRows);
+  const timeOptions = collectTimeOptions(state.candidateRows);
+  const visitOptionStats = collectVisitOptionStats(state.candidateRows);
 
-  populateSelect(
-    ui.yearFilter,
-    "All years",
-    collectYearOptions(state.derivedRows)
-  );
-
+  renderOrganizerToggles(organizerOptions);
+  renderDayToggles(dayOptions);
+  renderVisitToggles(visitOptionStats);
+  renderTimeToggles(timeOptions);
+  populateSelect(ui.yearFilter, "All years", yearOptions);
   resetFilterControls();
 
   logDebug(
     [
       "Filter options populated.",
-      `organizers=${Math.max(ui.organizerFilter.options.length - 1, 0)}`,
-      `statuses=${Math.max(ui.statusFilter.options.length - 1, 0)}`,
-      `years=${Math.max(ui.yearFilter.options.length - 1, 0)}`
+      `organizers=${organizerOptions.length}`,
+      `days=${dayOptions.length}`,
+      `visit_buckets=${visitOptionStats.length}`,
+      `time_windows=${timeOptions.length}`,
+      `years=${yearOptions.length}`
     ].join(" ")
   );
+}
+
+function renderOrganizerToggles(options) {
+  renderMultiToggleGroup({
+    container: ui.organizerToggleGroup,
+    options,
+    className: "toggle-chip",
+    isSelected: (value) => state.filters.organizers.includes(value),
+    onToggle: (value) => {
+      toggleArrayValue(state.filters.organizers, value);
+      applyFiltersAndRender();
+    }
+  });
+}
+
+function renderDayToggles(options) {
+  if (!ui.dayToggleGroup) {
+    return;
+  }
+
+  ui.dayToggleGroup.innerHTML = "";
+  const fragment = document.createDocumentFragment();
+
+  for (const option of options) {
+    const button = createToggleButton({
+      className: "toggle-chip toggle-chip--day",
+      value: option.value,
+      label: option.label,
+      isActive: state.filters.days.includes(option.value)
+    });
+
+    button.dataset.dayKey = option.value;
+    button.style.setProperty("--day-color", option.color || "#2563eb");
+
+    button.addEventListener("click", () => {
+      toggleArrayValue(state.filters.days, option.value);
+      applyFiltersAndRender();
+    });
+
+    fragment.appendChild(button);
+  }
+
+  ui.dayToggleGroup.appendChild(fragment);
+  syncToggleGroupState(ui.dayToggleGroup, state.filters.days);
+}
+
+function renderVisitToggles(options) {
+  if (!ui.visitToggleGroup) {
+    return;
+  }
+
+  ui.visitToggleGroup.innerHTML = "";
+  const fragment = document.createDocumentFragment();
+
+  for (const option of options) {
+    const button = createToggleButton({
+      className: "toggle-chip toggle-chip--visit",
+      value: option.value,
+      label: option.label,
+      isActive: state.filters.visitBuckets.includes(option.value)
+    });
+
+    button.disabled = !option.isAvailable;
+    button.dataset.available = String(option.isAvailable);
+    button.title = option.isAvailable
+      ? `${option.count} row(s) currently match ${option.label}`
+      : `No rows currently match ${option.label}`;
+
+    button.addEventListener("click", () => {
+      if (button.disabled) {
+        return;
+      }
+
+      toggleArrayValue(state.filters.visitBuckets, option.value);
+      applyFiltersAndRender();
+    });
+
+    fragment.appendChild(button);
+  }
+
+  ui.visitToggleGroup.appendChild(fragment);
+  updateVisitToggleAvailability(options);
+  syncToggleGroupState(ui.visitToggleGroup, state.filters.visitBuckets);
+}
+
+function renderTimeToggles(options) {
+  renderSingleToggleGroup({
+    container: ui.timeToggleGroup,
+    options,
+    className: "toggle-chip",
+    selectedValue: state.filters.timeWindow,
+    onToggle: (value) => {
+      state.filters.timeWindow =
+        state.filters.timeWindow === value ? "all" : value;
+      applyFiltersAndRender();
+    }
+  });
+}
+
+function renderMultiToggleGroup({
+  container,
+  options,
+  className,
+  isSelected,
+  onToggle
+}) {
+  if (!container) {
+    return;
+  }
+
+  container.innerHTML = "";
+  const fragment = document.createDocumentFragment();
+
+  for (const option of options) {
+    const button = createToggleButton({
+      className,
+      value: option.value,
+      label: option.label,
+      isActive: isSelected(option.value)
+    });
+
+    button.addEventListener("click", () => {
+      onToggle(option.value);
+    });
+
+    fragment.appendChild(button);
+  }
+
+  container.appendChild(fragment);
+}
+
+function renderSingleToggleGroup({
+  container,
+  options,
+  className,
+  selectedValue,
+  onToggle
+}) {
+  if (!container) {
+    return;
+  }
+
+  container.innerHTML = "";
+  const fragment = document.createDocumentFragment();
+
+  for (const option of options) {
+    const button = createToggleButton({
+      className,
+      value: option.value,
+      label: option.label,
+      isActive: selectedValue === option.value
+    });
+
+    button.addEventListener("click", () => {
+      onToggle(option.value);
+    });
+
+    fragment.appendChild(button);
+  }
+
+  container.appendChild(fragment);
+  syncSingleToggleGroupState(container, selectedValue);
+}
+
+function createToggleButton({ className, value, label, isActive = false }) {
+  const button = document.createElement("button");
+  button.type = "button";
+  button.className = className;
+  button.dataset.value = value;
+  button.textContent = label;
+  button.classList.toggle("is-active", isActive);
+  button.setAttribute("aria-pressed", String(isActive));
+  return button;
+}
+
+function syncToggleGroupState(container, selectedValues) {
+  if (!container) {
+    return;
+  }
+
+  const selected = new Set(selectedValues);
+
+  for (const button of container.querySelectorAll("[data-value]")) {
+    const isSelected = selected.has(button.dataset.value);
+    button.classList.toggle("is-active", isSelected);
+    button.setAttribute("aria-pressed", String(isSelected));
+  }
+}
+
+function syncSingleToggleGroupState(container, selectedValue) {
+  if (!container) {
+    return;
+  }
+
+  for (const button of container.querySelectorAll("[data-value]")) {
+    const isSelected = button.dataset.value === selectedValue;
+    button.classList.toggle("is-active", isSelected);
+    button.setAttribute("aria-pressed", String(isSelected));
+  }
+}
+
+function updateVisitToggleAvailability(options) {
+  if (!ui.visitToggleGroup) {
+    return;
+  }
+
+  const optionMap = new Map(options.map((item) => [item.value, item]));
+
+  for (const button of ui.visitToggleGroup.querySelectorAll("[data-value]")) {
+    const item = optionMap.get(button.dataset.value);
+    const isAvailable = Boolean(item?.isAvailable);
+    const count = item?.count || 0;
+    const label = item?.label || button.textContent;
+
+    button.disabled = !isAvailable;
+    button.dataset.available = String(isAvailable);
+    button.classList.toggle("is-available", isAvailable);
+    button.classList.toggle("is-empty", !isAvailable);
+    button.title = isAvailable
+      ? `${count} row(s) currently match ${label}`
+      : `No rows currently match ${label}`;
+  }
+}
+
+function pruneUnavailableVisitSelections(options) {
+  const availableValues = new Set(
+    options.filter((item) => item.isAvailable).map((item) => item.value)
+  );
+
+  const nextSelected = state.filters.visitBuckets.filter((value) =>
+    availableValues.has(value)
+  );
+
+  if (nextSelected.length !== state.filters.visitBuckets.length) {
+    state.filters.visitBuckets = nextSelected;
+    syncToggleGroupState(ui.visitToggleGroup, state.filters.visitBuckets);
+    logDebug(
+      "Unavailable visit selections were cleared to match the active filter context."
+    );
+  }
 }
 
 function applyFiltersAndRender(options = {}) {
   const { fitToVisible = false } = options;
 
-  const candidateRows = state.derivedRows.filter((row) => row._hasCoordinates);
+  const visitOptionStats = collectVisitOptionStats(state.candidateRows);
+  pruneUnavailableVisitSelections(visitOptionStats);
 
-  const filteredRows = candidateRows.filter(matchesAttributeFilters);
+  const populationRows = state.candidateRows.filter((row) =>
+    matchesPopulationFilters(row)
+  );
+  const filteredRows = populationRows.filter(matchesKeywordFilter);
+
+  updateBoundaryCounts(populationRows);
+  refreshBoundaryStyles();
+  updateVisitToggleAvailability(visitOptionStats);
+
   let visibleRows = filteredRows;
-
   if (state.selectedBoundaryFeature) {
-    visibleRows = filteredRows.filter((row) =>
-      pointInFeature([row._longitude, row._latitude], state.selectedBoundaryFeature)
-    );
+    const selectedBoundaryKey = getBoundaryKey(state.selectedBoundaryFeature);
+    visibleRows = filteredRows.filter((row) => row._boundaryKey === selectedBoundaryKey);
   }
 
+  const visibleOriginRows = getVisibleOriginRows();
+
+  state.populationRows = populationRows;
   state.filteredRows = filteredRows;
   state.visibleRows = visibleRows;
+  state.visibleOriginRows = visibleOriginRows;
 
   state.lastLoadSummary = {
     ...state.lastLoadSummary,
+    populationRows: populationRows.length,
     filteredRows: filteredRows.length,
     boundaryMatchedRows: visibleRows.length,
-    visibleRows: visibleRows.length
+    visibleRows: visibleRows.length,
+    visibleOriginRows: visibleOriginRows.length
   };
 
   renderMarkers(visibleRows, { fitToVisible });
+  renderOriginMarkers(visibleOriginRows);
   updateSummaryUi();
+  syncFilterControls();
 
   logDebug(
     [
       "Filter pass complete.",
-      `candidate=${candidateRows.length}`,
-      `after_attribute_filters=${filteredRows.length}`,
+      `candidate=${state.candidateRows.length}`,
+      `population=${populationRows.length}`,
+      `after_keyword=${filteredRows.length}`,
       `visible=${visibleRows.length}`,
-      `boundary=${state.selectedBoundaryFeature ? getBoundaryName(state.selectedBoundaryFeature) || "selected" : "none"}`
+      `visible_origins=${visibleOriginRows.length}`,
+      `selected_origin=${state.selectedOriginId || "none"}`,
+      `time_window=${state.filters.timeWindow}`,
+      `boundary=${
+        state.selectedBoundaryFeature
+          ? getBoundaryName(state.selectedBoundaryFeature) || "selected"
+          : "none"
+      }`
     ].join(" ")
   );
 }
 
-function matchesAttributeFilters(row) {
-  const keyword = normalizeText(state.filters.keyword);
+function getVisibleOriginRows() {
+  let rows = state.originRows.filter((origin) => origin._isActive && origin._hasCoordinates);
 
-  if (keyword && !row._keywordBlob.includes(keyword)) {
+  if (state.selectedBoundaryFeature) {
+    const selectedBoundaryKey = getBoundaryKey(state.selectedBoundaryFeature);
+    rows = rows.filter((origin) => origin._boundaryKey === selectedBoundaryKey);
+  }
+
+  const selectedOrigin = getSelectedOrigin();
+  if (
+    selectedOrigin &&
+    selectedOrigin._hasCoordinates &&
+    !rows.some((origin) => origin.id === selectedOrigin.id)
+  ) {
+    rows = [...rows, selectedOrigin];
+  }
+
+  return rows;
+}
+
+function matchesPopulationFilters(row, options = {}) {
+  const { ignoreVisitBuckets = false, allowNoSelection = false } = options;
+
+  if (!allowNoSelection && !hasPopulationSelection()) {
     return false;
   }
 
   if (
-    state.filters.organizer !== "all" &&
-    row._organizerKey !== state.filters.organizer
+    state.filters.organizers.length > 0 &&
+    !state.filters.organizers.includes(row._organizerKey)
   ) {
     return false;
   }
 
-  if (state.filters.status !== "all" && row._statusKey !== state.filters.status) {
+  if (state.filters.days.length > 0 && !state.filters.days.includes(row._dayKey)) {
+    return false;
+  }
+
+  if (
+    !ignoreVisitBuckets &&
+    state.filters.visitBuckets.length > 0 &&
+    !state.filters.visitBuckets.includes(row._visitBucket)
+  ) {
     return false;
   }
 
@@ -1254,8 +2463,70 @@ function matchesAttributeFilters(row) {
     return false;
   }
 
+  if (!matchesTimeWindow(row, state.filters.timeWindow)) {
+    return false;
+  }
+
   return true;
 }
+
+function matchesTimeWindow(row, timeWindow) {
+  if (timeWindow === "all") {
+    return true;
+  }
+
+  if (!row._hasParsedDate || !(row._parsedDate instanceof Date)) {
+    return false;
+  }
+
+  const dateMs = row._parsedDate.getTime();
+  const { now, startOfToday, endOfToday, last7Start, last30Start } = state.timeContext;
+
+  if (timeWindow === "upcoming") {
+    const threshold = row._isDateOnly ? startOfToday.getTime() : now.getTime();
+    return dateMs >= threshold;
+  }
+
+  if (timeWindow === "last_7_days") {
+    return (
+      dateMs >= last7Start.getTime() &&
+      dateMs <= endOfToday.getTime() &&
+      !row._isUpcoming
+    );
+  }
+
+  if (timeWindow === "last_30_days") {
+    return (
+      dateMs >= last30Start.getTime() &&
+      dateMs <= endOfToday.getTime() &&
+      !row._isUpcoming
+    );
+  }
+
+  return true;
+}
+
+function matchesKeywordFilter(row) {
+  const keyword = normalizeText(state.filters.keyword);
+  if (!keyword) {
+    return true;
+  }
+  return row._keywordBlob.includes(keyword);
+}
+
+function hasPopulationSelection() {
+  return (
+    state.filters.organizers.length > 0 ||
+    state.filters.days.length > 0 ||
+    state.filters.visitBuckets.length > 0 ||
+    state.filters.year !== "all" ||
+    state.filters.timeWindow !== "all"
+  );
+}
+
+/* ==========================================================================
+   Marker rendering + popups
+   ========================================================================== */
 
 function renderMarkers(rowsToRender, options = {}) {
   const { fitToVisible = false } = options;
@@ -1263,13 +2534,15 @@ function renderMarkers(rowsToRender, options = {}) {
   state.markerLayer.clearLayers();
 
   for (const row of rowsToRender) {
+    const markerColor = row._dayColor || "#2563eb";
+
     const marker = L.circleMarker([row._latitude, row._longitude], {
       radius: CONFIG.markerRadius,
       weight: 1,
       opacity: 1,
-      color: "#1d4ed8",
-      fillColor: "#2563eb",
-      fillOpacity: 0.8
+      color: markerColor,
+      fillColor: markerColor,
+      fillOpacity: 0.82
     });
 
     marker.bindPopup(buildPopupHtml(row));
@@ -1278,43 +2551,121 @@ function renderMarkers(rowsToRender, options = {}) {
 
   setText(ui.visibleMarkerCount, String(rowsToRender.length));
 
-  if (fitToVisible && rowsToRender.length > 0) {
+  if (fitToVisible && rowsToRender.length > 0 && !state.selectedBoundaryFeature) {
     const group = L.featureGroup(
       rowsToRender.map((row) => L.marker([row._latitude, row._longitude]))
     );
-    tryFitMapToLayer(group);
-  } else if (state.derivedRows.filter((row) => row._hasCoordinates).length === 0) {
+    tryFitMapToLayer(group, CONFIG.fitBoundsPaddingDefault);
+    return;
+  }
+
+  if (state.candidateRows.length === 0) {
     logDebug("No marker candidates found. Check export CSV latitude/longitude fields.");
-  } else if (state.selectedBoundaryFeature && rowsToRender.length === 0) {
-    logDebug("Attribute-filtered rows exist, but none fall inside the selected boundary.");
-  } else if (!state.selectedBoundaryFeature && rowsToRender.length === 0) {
-    logDebug("No rows remain after attribute filters.");
+    return;
+  }
+
+  if (!hasPopulationSelection()) {
+    logDebug(
+      "Population gate active. No job markers shown until organizer, day, year, visit count, or time window is selected."
+    );
+    return;
+  }
+
+  if (state.selectedBoundaryFeature && rowsToRender.length === 0) {
+    logDebug(
+      "Population-matched rows exist, but none remain inside the selected boundary and keyword filter."
+    );
+    return;
+  }
+
+  if (!state.selectedBoundaryFeature && rowsToRender.length === 0) {
+    logDebug("No rows remain after the current population and keyword filters.");
   }
 }
 
+function renderOriginMarkers(originsToRender) {
+  state.originMarkerLayer.clearLayers();
+
+  for (const origin of originsToRender) {
+    const isSelected = origin.id === state.selectedOriginId;
+    const style = getOriginMarkerStyle(origin, isSelected);
+
+    const marker = L.circleMarker([origin._latitude, origin._longitude], style);
+
+    marker.bindPopup(buildOriginPopupHtml(origin));
+
+    marker.on("click", () => {
+      if (state.selectedOriginId === origin.id) {
+        state.selectedOriginId = "";
+        renderOriginMarkers(state.visibleOriginRows);
+        logDebug(`Origin selection cleared: ${origin.name || origin.id}`);
+        return;
+      }
+
+      state.selectedOriginId = origin.id;
+      renderOriginMarkers(state.visibleOriginRows);
+      logDebug(`Origin selected: ${origin.name || origin.id}`);
+    });
+
+    marker.addTo(state.originMarkerLayer);
+  }
+}
+
+function getOriginMarkerStyle(origin, isSelected = false) {
+  const meta = getOriginTypeMeta(origin._typeKey);
+
+  return {
+    radius: isSelected ? CONFIG.originMarkerRadius + 2 : CONFIG.originMarkerRadius,
+    weight: isSelected ? 3 : 2,
+    opacity: 1,
+    color: isSelected ? "#111827" : meta.color,
+    fillColor: meta.fillColor,
+    fillOpacity: isSelected ? 0.95 : 0.88
+  };
+}
+
 function buildPopupHtml(row) {
-  const boundaryName = state.selectedBoundaryFeature
+  const empty = CONFIG.popupEmptyValue;
+
+  const activeBoundaryName = state.selectedBoundaryFeature
     ? getBoundaryName(state.selectedBoundaryFeature) || "Selected boundary"
     : "None";
 
-  const rowId = row.row_id || row.source_row_id || "â€”";
-  const eventId = row.event_id || "â€”";
-  const calendarId = row.calendar_id || "â€”";
-  const statusText = row._statusText || "â€”";
-  const organizerText = row._organizerText || "â€”";
-  const dateText = row._dateDisplay || "â€”";
-  const addressText = row._addressText || "â€”";
+  const rowId = row.row_id || row.source_row_id || empty;
+  const eventId = row.event_id || empty;
+  const calendarId = row.calendar_id || empty;
+  const organizerText = row._organizerText || empty;
+  const dateText = row._dateDisplay || empty;
+  const dayText = row._dayLabel || empty;
+  const addressText = row._addressText || empty;
   const notesText = row._notesText || "";
   const joinText = row._joined ? "Yes" : "No";
+  const visitCountText = row._visitCount ? String(row._visitCount) : empty;
+  const visitBucketText = row._visitBucketLabel || empty;
+  const timeBucketText = row._timeBucketLabel || empty;
+  const rowBoundaryName = row._boundaryName || "Unassigned";
+  const nearestOriginText = row._nearestOriginName || empty;
+  const nearestOriginTypeText = row._nearestOriginType || empty;
+  const nearestOriginDistanceText =
+    Number.isFinite(row._nearestOriginDistanceKm)
+      ? `${formatNumber(row._nearestOriginDistanceKm, 1)} km`
+      : empty;
 
   return `
     <div>
       <div class="popup-section">
         <h3 class="popup-title">${escapeHtml(row._title || "Record")}</h3>
         <p class="popup-meta"><span class="popup-label">Date:</span> ${escapeHtml(dateText)}</p>
-        <p class="popup-meta"><span class="popup-label">Status:</span> ${escapeHtml(statusText)}</p>
+        <p class="popup-meta"><span class="popup-label">Day:</span> ${escapeHtml(dayText)}</p>
         <p class="popup-meta"><span class="popup-label">Organizer:</span> ${escapeHtml(organizerText)}</p>
         <p class="popup-meta"><span class="popup-label">Address:</span> ${escapeHtml(addressText)}</p>
+        <p class="popup-meta"><span class="popup-label">Time window:</span> ${escapeHtml(timeBucketText)}</p>
+        <p class="popup-meta"><span class="popup-label">Visit count:</span> ${escapeHtml(visitCountText)}</p>
+        <p class="popup-meta"><span class="popup-label">Visit bucket:</span> ${escapeHtml(visitBucketText)}</p>
+        <p class="popup-meta"><span class="popup-label">Municipality:</span> ${escapeHtml(rowBoundaryName)}</p>
+        <p class="popup-meta"><span class="popup-label">Nearest origin:</span> ${escapeHtml(nearestOriginText)}</p>
+        <p class="popup-meta"><span class="popup-label">Nearest origin type:</span> ${escapeHtml(nearestOriginTypeText)}</p>
+        <p class="popup-meta"><span class="popup-label">Nearest origin distance:</span> ${escapeHtml(nearestOriginDistanceText)}</p>
         ${
           notesText
             ? `<p class="popup-notes"><span class="popup-label">Notes:</span> ${escapeHtml(notesText)}</p>`
@@ -1330,21 +2681,59 @@ function buildPopupHtml(row) {
         <p class="popup-meta popup-meta--muted"><span class="popup-label">Latitude:</span> ${escapeHtml(formatCoordinate(row._latitude))}</p>
         <p class="popup-meta popup-meta--muted"><span class="popup-label">Longitude:</span> ${escapeHtml(formatCoordinate(row._longitude))}</p>
         <p class="popup-meta popup-meta--muted"><span class="popup-label">Joined:</span> ${escapeHtml(joinText)}</p>
-        <p class="popup-meta popup-meta--muted"><span class="popup-label">Boundary filter:</span> ${escapeHtml(boundaryName)}</p>
+        <p class="popup-meta popup-meta--muted"><span class="popup-label">Site key:</span> ${escapeHtml(row._siteKey || empty)}</p>
+        <p class="popup-meta popup-meta--muted"><span class="popup-label">Boundary key:</span> ${escapeHtml(row._boundaryKey || empty)}</p>
+        <p class="popup-meta popup-meta--muted"><span class="popup-label">Boundary filter:</span> ${escapeHtml(activeBoundaryName)}</p>
       </div>
     </div>
   `;
 }
+
+function buildOriginPopupHtml(origin) {
+  const empty = CONFIG.popupEmptyValue;
+  const isSelected = origin.id === state.selectedOriginId;
+
+  return `
+    <div>
+      <div class="popup-section">
+        <h3 class="popup-title">${escapeHtml(origin.name || "Origin")}</h3>
+        <p class="popup-meta"><span class="popup-label">Type:</span> ${escapeHtml(origin._typeLabel || empty)}</p>
+        <p class="popup-meta"><span class="popup-label">Address:</span> ${escapeHtml(origin.address || empty)}</p>
+        <p class="popup-meta"><span class="popup-label">Municipality:</span> ${escapeHtml(origin._boundaryName || "Unassigned")}</p>
+        <p class="popup-meta"><span class="popup-label">Active:</span> ${escapeHtml(origin._isActive ? "Yes" : "No")}</p>
+        <p class="popup-meta"><span class="popup-label">Selected:</span> ${escapeHtml(isSelected ? "Yes" : "No")}</p>
+        ${
+          origin.notes
+            ? `<p class="popup-notes"><span class="popup-label">Notes:</span> ${escapeHtml(origin.notes)}</p>`
+            : ""
+        }
+      </div>
+
+      <div class="popup-section">
+        <div class="popup-section-title">Technical details</div>
+        <p class="popup-meta popup-meta--muted"><span class="popup-label">Origin ID:</span> ${escapeHtml(origin.id || empty)}</p>
+        <p class="popup-meta popup-meta--muted"><span class="popup-label">Latitude:</span> ${escapeHtml(formatCoordinate(origin._latitude))}</p>
+        <p class="popup-meta popup-meta--muted"><span class="popup-label">Longitude:</span> ${escapeHtml(formatCoordinate(origin._longitude))}</p>
+        <p class="popup-meta popup-meta--muted"><span class="popup-label">Boundary key:</span> ${escapeHtml(origin._boundaryKey || empty)}</p>
+      </div>
+    </div>
+  `;
+}
+
+/* ==========================================================================
+   Summary UI
+   ========================================================================== */
 
 function updateSummaryUi() {
   if (state.manifest?.updated_at) {
     setText(ui.updatedAt, formatTimestamp(state.manifest.updated_at));
   }
 
-  const candidateCount = state.derivedRows.filter((row) => row._hasCoordinates).length;
+  const candidateCount = state.candidateRows.length;
   const filteredCount = state.filteredRows.length;
   const visibleCount = state.visibleRows.length;
   const boundaryCount = state.selectedBoundaryFeature ? visibleCount : filteredCount;
+  const selectedOrigin = getSelectedOrigin();
 
   setText(ui.candidateMarkerCount, String(candidateCount));
   setText(ui.filteredRowCount, String(filteredCount));
@@ -1352,11 +2741,27 @@ function updateSummaryUi() {
   setText(ui.visibleMarkerCount, String(visibleCount));
   setText(ui.joinedCount, String(state.joinedRows.length));
 
-  setText(ui.resultsMessage, buildResultsMessage(candidateCount, filteredCount, visibleCount));
+  setText(
+    ui.resultsMessage,
+    buildResultsMessage(
+      candidateCount,
+      state.populationRows.length,
+      filteredCount,
+      visibleCount,
+      state.visibleOriginRows.length,
+      selectedOrigin
+    )
+  );
 }
 
-function buildResultsMessage(candidateCount, filteredCount, visibleCount) {
-  const activeFilterCount = countActiveFilters();
+function buildResultsMessage(
+  candidateCount,
+  populationCount,
+  filteredCount,
+  visibleCount,
+  visibleOriginCount,
+  selectedOrigin
+) {
   const boundaryName = state.selectedBoundaryFeature
     ? getBoundaryName(state.selectedBoundaryFeature) || "selected boundary"
     : "";
@@ -1365,31 +2770,45 @@ function buildResultsMessage(candidateCount, filteredCount, visibleCount) {
     return "No coordinate-valid rows are currently available for mapping.";
   }
 
-  if (filteredCount === 0 && activeFilterCount > 0) {
-    return "No rows match the current attribute filters.";
+  if (!hasPopulationSelection()) {
+    const base = `Select at least one organizer, weekday, year, visit count, or time window to populate job markers. ${visibleOriginCount} origin marker(s) are loaded.`;
+    if (selectedOrigin) {
+      return `${base} Selected origin: ${selectedOrigin.name || selectedOrigin.id}.`;
+    }
+    return base;
+  }
+
+  if (populationCount === 0) {
+    return "No rows match the current population filters.";
+  }
+
+  if (filteredCount === 0 && state.filters.keyword.trim()) {
+    return "No population-matched rows also match the current keyword search.";
   }
 
   if (visibleCount === 0 && state.selectedBoundaryFeature) {
     return `No filtered rows fall inside ${boundaryName}.`;
   }
 
-  if (activeFilterCount === 0 && !state.selectedBoundaryFeature) {
-    return "Showing all coordinate-valid mapped rows.";
+  let message = "";
+
+  if (state.selectedBoundaryFeature && state.filters.keyword.trim()) {
+    message = `Showing ${visibleCount} row(s) after population filters, keyword search, and boundary selection.`;
+  } else if (state.selectedBoundaryFeature) {
+    message = `Showing ${visibleCount} row(s) inside ${boundaryName}.`;
+  } else if (state.filters.keyword.trim()) {
+    message = `Showing ${visibleCount} row(s) after population filters and keyword search.`;
+  } else {
+    message = `Showing ${visibleCount} row(s) from the selected population.`;
   }
 
-  if (activeFilterCount > 0 && state.selectedBoundaryFeature) {
-    return `Showing ${visibleCount} row(s) after attribute filters and boundary selection.`;
+  message += ` ${visibleOriginCount} origin marker(s) visible.`;
+
+  if (selectedOrigin) {
+    message += ` Selected origin: ${selectedOrigin.name || selectedOrigin.id}.`;
   }
 
-  if (activeFilterCount > 0) {
-    return `Showing ${visibleCount} row(s) after attribute filters.`;
-  }
-
-  if (state.selectedBoundaryFeature) {
-    return `Showing ${visibleCount} row(s) inside ${boundaryName}.`;
-  }
-
-  return "Showing current mapped result set.";
+  return message;
 }
 
 function finalizeAppStatus() {
@@ -1398,11 +2817,8 @@ function finalizeAppStatus() {
     return;
   }
 
-  const {
-    candidateMarkerRows,
-    rowsMissingCoordinates,
-    unmatchedExportRows
-  } = state.lastLoadSummary;
+  const { candidateMarkerRows, rowsMissingCoordinates, unmatchedExportRows } =
+    state.lastLoadSummary;
 
   if (state.exportRows.length === 0) {
     setStatus("appStatus", "No export rows");
@@ -1425,13 +2841,12 @@ function finalizeAppStatus() {
   setStatus("appStatus", "Ready");
 }
 
+/* ==========================================================================
+   Filter control state
+   ========================================================================== */
+
 function clearFilters(resetInputs = true) {
-  state.filters = {
-    keyword: "",
-    organizer: "all",
-    status: "all",
-    year: "all"
-  };
+  state.filters = cloneDefaultFilters();
 
   if (resetInputs) {
     resetFilterControls();
@@ -1444,22 +2859,25 @@ function resetFilterControls() {
     ui.keywordInput.value = state.filters.keyword;
   }
 
-  if (ui.organizerFilter) {
-    ui.organizerFilter.value = state.filters.organizer;
-  }
-
-  if (ui.statusFilter) {
-    ui.statusFilter.value = state.filters.status;
-  }
-
   if (ui.yearFilter) {
     ui.yearFilter.value = state.filters.year;
   }
+
+  syncToggleGroupState(ui.organizerToggleGroup, state.filters.organizers);
+  syncToggleGroupState(ui.dayToggleGroup, state.filters.days);
+  syncToggleGroupState(ui.visitToggleGroup, state.filters.visitBuckets);
+  syncSingleToggleGroupState(ui.timeToggleGroup, state.filters.timeWindow);
+}
+
+function syncFilterControls() {
+  resetFilterControls();
 }
 
 function resetFilterOptions() {
-  populateSelect(ui.organizerFilter, "All organizers", []);
-  populateSelect(ui.statusFilter, "All statuses", []);
+  if (ui.organizerToggleGroup) ui.organizerToggleGroup.innerHTML = "";
+  if (ui.dayToggleGroup) ui.dayToggleGroup.innerHTML = "";
+  if (ui.visitToggleGroup) ui.visitToggleGroup.innerHTML = "";
+  if (ui.timeToggleGroup) ui.timeToggleGroup.innerHTML = "";
   populateSelect(ui.yearFilter, "All years", []);
 }
 
@@ -1512,6 +2930,27 @@ function collectUniqueOptions(rows, keyField, labelField, options = {}) {
     .sort((a, b) => a.label.localeCompare(b.label, undefined, { sensitivity: "base" }));
 }
 
+function collectDayOptions(rows) {
+  const map = new Map();
+
+  for (const row of rows) {
+    if (!row._dayKey || !row._dayLabel) {
+      continue;
+    }
+
+    if (!map.has(row._dayKey)) {
+      map.set(row._dayKey, {
+        value: row._dayKey,
+        label: row._dayLabel,
+        index: row._dayIndex,
+        color: row._dayColor
+      });
+    }
+  }
+
+  return [...map.values()].sort((a, b) => a.index - b.index);
+}
+
 function collectYearOptions(rows) {
   const years = new Set();
 
@@ -1526,29 +2965,163 @@ function collectYearOptions(rows) {
     .map((year) => ({ value: year, label: year }));
 }
 
-function countActiveFilters() {
-  let count = 0;
+function collectVisitOptionStats(rows) {
+  const stats = new Map();
 
-  if (state.filters.keyword.trim()) {
-    count += 1;
+  for (const meta of CONFIG.visitBucketMeta) {
+    stats.set(meta.value, {
+      value: meta.value,
+      label: meta.label,
+      order: meta.order,
+      count: 0,
+      isAvailable: false
+    });
   }
 
-  if (state.filters.organizer !== "all") {
-    count += 1;
+  let baseRows = rows.filter((row) =>
+    matchesPopulationFilters(row, {
+      ignoreVisitBuckets: true,
+      allowNoSelection: true
+    })
+  );
+
+  if (state.selectedBoundaryFeature) {
+    const selectedBoundaryKey = getBoundaryKey(state.selectedBoundaryFeature);
+    baseRows = baseRows.filter((row) => row._boundaryKey === selectedBoundaryKey);
   }
 
-  if (state.filters.status !== "all") {
-    count += 1;
+  for (const row of baseRows) {
+    if (!row._visitBucket || !stats.has(row._visitBucket)) {
+      continue;
+    }
+
+    const item = stats.get(row._visitBucket);
+    item.count += 1;
+    item.isAvailable = item.count > 0;
   }
 
-  if (state.filters.year !== "all") {
-    count += 1;
-  }
-
-  return count;
+  return [...stats.values()].sort((a, b) => a.order - b.order);
 }
 
-function getDisplayDate(row) {
+function collectTimeOptions(rows) {
+  const available = new Set(["all"]);
+
+  for (const row of rows) {
+    if (row._timeBucket) {
+      available.add(row._timeBucket);
+    }
+  }
+
+  return CONFIG.timeWindowMeta
+    .filter((item) => available.has(item.value))
+    .sort((a, b) => a.order - b.order)
+    .map((item) => ({ value: item.value, label: item.label }));
+}
+
+/* ==========================================================================
+   Row field derivation helpers
+   ========================================================================== */
+
+function getOrganizerLabel(rawValue) {
+  const normalizedRaw = String(rawValue || "").trim();
+  if (!normalizedRaw) {
+    return CONFIG.unknownLabel;
+  }
+  return CONFIG.organizerAliases[normalizedRaw] || normalizedRaw;
+}
+
+function getDayInfo(date) {
+  if (!(date instanceof Date) || Number.isNaN(date.getTime())) {
+    return { key: "", label: "", index: -1, color: "#2563eb" };
+  }
+
+  const keys = [
+    "sunday",
+    "monday",
+    "tuesday",
+    "wednesday",
+    "thursday",
+    "friday",
+    "saturday"
+  ];
+
+  const key = keys[date.getDay()];
+  const meta = CONFIG.dayMeta[key];
+
+  return {
+    key,
+    label: meta?.label || "",
+    index: meta?.index ?? date.getDay(),
+    color: meta?.color || "#2563eb"
+  };
+}
+
+function getOriginTypeMeta(typeKey) {
+  return (
+    CONFIG.originTypeMeta[typeKey] || {
+      label: toTitleCase(typeKey || "Other"),
+      color: CONFIG.originTypeMeta.other.color,
+      fillColor: CONFIG.originTypeMeta.other.fillColor
+    }
+  );
+}
+
+function buildSiteKey(row) {
+  const primaryParts = [
+    normalizeSiteComponent(row.street_name_number),
+    normalizeSiteComponent(row.city),
+    normalizeSiteComponent(row.province)
+  ].filter(Boolean);
+
+  if (primaryParts.length >= 2) {
+    return primaryParts.join("|");
+  }
+
+  const secondaryParts = [
+    normalizeSiteComponent(row.address_raw),
+    normalizeSiteComponent(row.location),
+    normalizeSiteComponent(row.address)
+  ].filter(Boolean);
+
+  return secondaryParts[0] || "";
+}
+
+function normalizeSiteComponent(value) {
+  return String(value ?? "")
+    .toLowerCase()
+    .replace(/[.,/#!$%^&*;:{}=\-_`~()]/g, " ")
+    .replace(/\b(apartment|apt)\b/g, "apt")
+    .replace(/\b(suite|ste)\b/g, "ste")
+    .replace(/\b(road)\b/g, "rd")
+    .replace(/\b(street)\b/g, "st")
+    .replace(/\b(avenue)\b/g, "ave")
+    .replace(/\b(boulevard)\b/g, "blvd")
+    .replace(/\b(drive)\b/g, "dr")
+    .replace(/\b(lane)\b/g, "ln")
+    .replace(/\b(court)\b/g, "crt")
+    .replace(/\b(place)\b/g, "pl")
+    .replace(/\b(trail)\b/g, "trl")
+    .replace(/\b(highway)\b/g, "hwy")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function getVisitBucket(count) {
+  if (!Number.isFinite(count) || count <= 0) {
+    return "";
+  }
+  return count > 10 ? "10" : String(count);
+}
+
+function getVisitBucketLabel(bucket) {
+  return CONFIG.visitBucketMeta.find((item) => item.value === bucket)?.label || "";
+}
+
+function getTimeWindowLabel(value) {
+  return CONFIG.timeWindowMeta.find((item) => item.value === value)?.label || "";
+}
+
+function getDisplayDate(row, parsedDate = null) {
   return (
     firstNonEmpty(
       row.date,
@@ -1556,11 +3129,11 @@ function getDisplayDate(row) {
       row.event_date,
       row.start_time,
       row.end_time,
-      formatDateFromObject(parsePossibleDate(row.date)),
+      formatDateFromObject(parsedDate || parsePossibleDate(row.date)),
       formatDateFromObject(parsePossibleDate(row.start_date)),
       formatDateFromObject(parsePossibleDate(row.event_date)),
       formatDateFromObject(parsePossibleDate(row.start_time))
-    ) || "â€”"
+    ) || CONFIG.popupEmptyValue
   );
 }
 
@@ -1570,12 +3143,7 @@ function parsePossibleDate(value) {
   }
 
   const parsed = new Date(value);
-
-  if (Number.isNaN(parsed.getTime())) {
-    return null;
-  }
-
-  return parsed;
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
 }
 
 function formatDateFromObject(date) {
@@ -1586,164 +3154,6 @@ function formatDateFromObject(date) {
   return new Intl.DateTimeFormat(undefined, {
     dateStyle: "medium"
   }).format(date);
-}
-
-function buildAssetUrl(path) {
-  return `${CONFIG.supabaseBaseUrl.replace(/\/+$/, "")}/${path.replace(/^\/+/, "")}`;
-}
-
-async function fetchJson(url) {
-  const response = await fetch(withNoCacheStamp(url), {
-    cache: "no-store"
-  });
-
-  if (!response.ok) {
-    throw new Error(`Failed to fetch JSON (${response.status}) from ${url}`);
-  }
-
-  return response.json();
-}
-
-async function fetchText(url) {
-  const response = await fetch(withNoCacheStamp(url), {
-    cache: "no-store"
-  });
-
-  if (!response.ok) {
-    throw new Error(`Failed to fetch text (${response.status}) from ${url}`);
-  }
-
-  return response.text();
-}
-
-function withNoCacheStamp(url) {
-  const separator = url.includes("?") ? "&" : "?";
-  return `${url}${separator}_ts=${Date.now()}`;
-}
-
-function parseCsv(csvText) {
-  if (!csvText || !csvText.trim()) {
-    return [];
-  }
-
-  const normalized = csvText.replace(/^\uFEFF/, "");
-  const rows = splitCsvLines(normalized);
-
-  if (rows.length === 0) {
-    return [];
-  }
-
-  const headers = parseCsvLine(rows[0]).map((header) => header.trim());
-  const records = [];
-
-  for (let i = 1; i < rows.length; i += 1) {
-    const rawLine = rows[i];
-
-    if (!rawLine.trim()) {
-      continue;
-    }
-
-    const values = parseCsvLine(rawLine);
-    const record = {};
-
-    headers.forEach((header, index) => {
-      record[header] = (values[index] ?? "").trim();
-    });
-
-    records.push(record);
-  }
-
-  return records;
-}
-
-function splitCsvLines(text) {
-  const lines = [];
-  let current = "";
-  let inQuotes = false;
-
-  for (let i = 0; i < text.length; i += 1) {
-    const char = text[i];
-    const next = text[i + 1];
-
-    if (char === '"') {
-      current += char;
-
-      if (inQuotes && next === '"') {
-        current += next;
-        i += 1;
-      } else {
-        inQuotes = !inQuotes;
-      }
-
-      continue;
-    }
-
-    if ((char === "\n" || char === "\r") && !inQuotes) {
-      if (char === "\r" && next === "\n") {
-        i += 1;
-      }
-
-      lines.push(current);
-      current = "";
-      continue;
-    }
-
-    current += char;
-  }
-
-  if (current) {
-    lines.push(current);
-  }
-
-  return lines;
-}
-
-function parseCsvLine(line) {
-  const values = [];
-  let current = "";
-  let inQuotes = false;
-
-  for (let i = 0; i < line.length; i += 1) {
-    const char = line[i];
-    const next = line[i + 1];
-
-    if (char === '"') {
-      if (inQuotes && next === '"') {
-        current += '"';
-        i += 1;
-      } else {
-        inQuotes = !inQuotes;
-      }
-
-      continue;
-    }
-
-    if (char === "," && !inQuotes) {
-      values.push(current);
-      current = "";
-      continue;
-    }
-
-    current += char;
-  }
-
-  values.push(current);
-  return values;
-}
-
-function getJoinKey(row) {
-  if (!row) {
-    return "";
-  }
-
-  const parts = [
-    row.row_id || row.source_row_id || "",
-    row.event_id || "",
-    row.calendar_id || ""
-  ].map((value) => String(value).trim());
-
-  const hasAny = parts.some(Boolean);
-  return hasAny ? parts.join("|") : "";
 }
 
 function composeAddress(row) {
@@ -1784,95 +3194,213 @@ function dedupeOrderedStrings(values) {
   return result;
 }
 
-function getBoundaryName(feature) {
-  if (!feature?.properties) {
+function getJoinKey(row) {
+  if (!row) {
     return "";
   }
 
-  return (
-    feature.properties.name ||
-    feature.properties.NAME ||
-    feature.properties.municipality ||
-    feature.properties.MUNICIPALITY ||
-    feature.properties.region ||
-    feature.properties.REGION ||
-    feature.properties.LEGAL_NAME ||
-    ""
-  );
+  const parts = [
+    row.row_id || row.source_row_id || "",
+    row.event_id || "",
+    row.calendar_id || ""
+  ].map((value) => String(value).trim());
+
+  return parts.some(Boolean) ? parts.join("|") : "";
 }
 
-function pointInFeature(point, feature) {
-  const geometry = feature?.geometry;
-
-  if (!geometry) {
-    return false;
+function getSelectedOrigin() {
+  if (!state.selectedOriginId) {
+    return null;
   }
 
-  if (geometry.type === "Polygon") {
-    return pointInPolygon(point, geometry.coordinates);
-  }
-
-  if (geometry.type === "MultiPolygon") {
-    return geometry.coordinates.some((polygonCoords) =>
-      pointInPolygon(point, polygonCoords)
-    );
-  }
-
-  return false;
+  return state.originRows.find((origin) => origin.id === state.selectedOriginId) || null;
 }
 
-function pointInPolygon(point, polygonRings) {
-  if (!Array.isArray(polygonRings) || polygonRings.length === 0) {
-    return false;
+/* ==========================================================================
+   Fetch + parsing helpers
+   ========================================================================== */
+
+function buildAssetUrl(path) {
+  return `${CONFIG.supabaseBaseUrl.replace(/\/+$/, "")}/${path.replace(/^\/+/, "")}`;
+}
+
+async function fetchJson(url) {
+  const response = await fetch(withNoCacheStamp(url), { cache: "no-store" });
+  if (!response.ok) {
+    throw new Error(`Failed to fetch JSON (${response.status}) from ${url}`);
+  }
+  return response.json();
+}
+
+async function fetchText(url) {
+  const response = await fetch(withNoCacheStamp(url), { cache: "no-store" });
+  if (!response.ok) {
+    throw new Error(`Failed to fetch text (${response.status}) from ${url}`);
+  }
+  return response.text();
+}
+
+function withNoCacheStamp(url) {
+  const separator = url.includes("?") ? "&" : "?";
+  return `${url}${separator}_ts=${Date.now()}`;
+}
+
+function parseCsv(csvText) {
+  if (!csvText || !csvText.trim()) {
+    return [];
   }
 
-  const outerRing = polygonRings[0];
-  const insideOuter = isPointInRing(point, outerRing);
-
-  if (!insideOuter) {
-    return false;
+  const normalized = csvText.replace(/^\uFEFF/, "");
+  const lines = splitCsvLines(normalized);
+  if (lines.length === 0) {
+    return [];
   }
 
-  for (let i = 1; i < polygonRings.length; i += 1) {
-    if (isPointInRing(point, polygonRings[i])) {
-      return false;
+  const headers = parseCsvLine(lines[0]).map((header) => header.trim());
+  const records = [];
+
+  for (let i = 1; i < lines.length; i += 1) {
+    const rawLine = lines[i];
+    if (!rawLine.trim()) {
+      continue;
     }
+
+    const values = parseCsvLine(rawLine);
+    const record = {};
+
+    headers.forEach((header, index) => {
+      record[header] = (values[index] ?? "").trim();
+    });
+
+    records.push(record);
   }
 
-  return true;
+  return records;
 }
 
-function isPointInRing(point, ring) {
-  const x = point[0];
-  const y = point[1];
-  let inside = false;
+function splitCsvLines(text) {
+  const lines = [];
+  let current = "";
+  let inQuotes = false;
 
-  for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
-    const xi = ring[i][0];
-    const yi = ring[i][1];
-    const xj = ring[j][0];
-    const yj = ring[j][1];
+  for (let i = 0; i < text.length; i += 1) {
+    const char = text[i];
+    const next = text[i + 1];
 
-    const intersects =
-      yi > y !== yj > y &&
-      x < ((xj - xi) * (y - yi)) / ((yj - yi) || Number.EPSILON) + xi;
+    if (char === '"') {
+      current += char;
 
-    if (intersects) {
-      inside = !inside;
+      if (inQuotes && next === '"') {
+        current += next;
+        i += 1;
+      } else {
+        inQuotes = !inQuotes;
+      }
+      continue;
     }
+
+    if ((char === "\n" || char === "\r") && !inQuotes) {
+      if (char === "\r" && next === "\n") {
+        i += 1;
+      }
+      lines.push(current);
+      current = "";
+      continue;
+    }
+
+    current += char;
   }
 
-  return inside;
+  if (current) {
+    lines.push(current);
+  }
+
+  return lines;
 }
 
-function tryFitMapToLayer(layer) {
+function parseCsvLine(line) {
+  const values = [];
+  let current = "";
+  let inQuotes = false;
+
+  for (let i = 0; i < line.length; i += 1) {
+    const char = line[i];
+    const next = line[i + 1];
+
+    if (char === '"') {
+      if (inQuotes && next === '"') {
+        current += '"';
+        i += 1;
+      } else {
+        inQuotes = !inQuotes;
+      }
+      continue;
+    }
+
+    if (char === "," && !inQuotes) {
+      values.push(current);
+      current = "";
+      continue;
+    }
+
+    current += char;
+  }
+
+  values.push(current);
+  return values;
+}
+
+/* ==========================================================================
+   Generic helpers
+   ========================================================================== */
+
+function createEmptyTimeContext() {
+  return {
+    now: null,
+    startOfToday: null,
+    endOfToday: null,
+    last7Start: null,
+    last30Start: null
+  };
+}
+
+function createEmptyLoadSummary() {
+  return {
+    boundaryFeatureCount: 0,
+    candidateMarkerRows: 0,
+    matchedRows: 0,
+    unmatchedExportRows: 0,
+    eventRowsWithoutKey: 0,
+    exportRowsWithoutKey: 0,
+    rowsMissingCoordinates: 0,
+    populationRows: 0,
+    filteredRows: 0,
+    boundaryMatchedRows: 0,
+    visibleRows: 0,
+    candidateRowsWithBoundary: 0,
+    candidateRowsWithoutBoundary: 0,
+    distinctSites: 0,
+    originRows: 0,
+    visibleOriginRows: 0
+  };
+}
+
+function cloneDefaultFilters() {
+  return {
+    keyword: DEFAULT_FILTERS.keyword,
+    organizers: [],
+    days: [],
+    year: DEFAULT_FILTERS.year,
+    visitBuckets: [],
+    timeWindow: DEFAULT_FILTERS.timeWindow
+  };
+}
+
+function tryFitMapToLayer(layer, padding = CONFIG.fitBoundsPaddingDefault) {
   try {
-    const bounds = layer.getBounds();
-
+    const bounds = layer?.getBounds?.();
     if (bounds && bounds.isValid()) {
-      state.map.fitBounds(bounds, {
-        padding: CONFIG.fitBoundsPadding
-      });
+      state.map.fitBounds(bounds, { padding });
     }
   } catch (error) {
     logDebug(`fitBounds skipped: ${error.message}`);
@@ -1884,8 +3412,7 @@ function toNumber(value) {
     return NaN;
   }
 
-  const normalized = String(value).trim();
-  const num = Number(normalized);
+  const num = Number(String(value).trim());
   return Number.isFinite(num) ? num : NaN;
 }
 
@@ -1896,13 +3423,21 @@ function normalizeText(value) {
     .trim();
 }
 
+function toggleArrayValue(array, value) {
+  const index = array.indexOf(value);
+  if (index >= 0) {
+    array.splice(index, 1);
+  } else {
+    array.push(value);
+  }
+}
+
 function formatCoordinate(value) {
-  return Number.isFinite(value) ? String(value) : "â€”";
+  return Number.isFinite(value) ? String(value) : CONFIG.popupEmptyValue;
 }
 
 function formatTimestamp(value) {
   const date = new Date(value);
-
   if (Number.isNaN(date.getTime())) {
     return value;
   }
@@ -1913,21 +3448,54 @@ function formatTimestamp(value) {
   }).format(date);
 }
 
+function formatNumber(value, maximumFractionDigits = 1) {
+  if (!Number.isFinite(value)) {
+    return CONFIG.popupEmptyValue;
+  }
+
+  return new Intl.NumberFormat(undefined, {
+    maximumFractionDigits
+  }).format(value);
+}
+
 function firstNonEmpty(...values) {
   for (const value of values) {
     if (value !== null && value !== undefined && String(value).trim() !== "") {
       return String(value).trim();
     }
   }
-
   return "";
 }
 
-function setStatus(id, text) {
-  const element = ui[id];
+function toTitleCase(value) {
+  return String(value ?? "")
+    .split(/[\s_-]+/)
+    .filter(Boolean)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1).toLowerCase())
+    .join(" ");
+}
 
-  if (element) {
-    element.textContent = text;
+function getDistanceKm(lat1, lon1, lat2, lon2) {
+  const toRadians = (degrees) => (degrees * Math.PI) / 180;
+
+  const earthRadiusKm = 6371;
+  const dLat = toRadians(lat2 - lat1);
+  const dLon = toRadians(lon2 - lon1);
+
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(toRadians(lat1)) *
+      Math.cos(toRadians(lat2)) *
+      Math.sin(dLon / 2) *
+      Math.sin(dLon / 2);
+
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return earthRadiusKm * c;
+}
+
+function setStatus(id, text) {
+  if (ui[id]) {
+    ui[id].textContent = text;
   }
 }
 
@@ -2158,7 +3726,7 @@ Thumbs.db
 
 # (Optional future)
 # Allow specific JSON configs if you add them later:
-# !data/*.json
+!data/*.json
 # !config/*.json
 
 # =========================
@@ -2178,233 +3746,120 @@ dist/
 build/
 
 
-===== plan.txt =====
+===== data\origins.json =====
 
-
----
-
-## `docs/build-plan.md`
-
-```md
-# RWK Build Plan
-
-This file stores the current phased build path for the RWK project.
-
-It exists so the repo itself contains the agreed development sequence.
-
----
-
-## Phase 1 â€” Freeze the baseline shell
-
-### Goal
-Turn the current exported shell into the official repo starting point.
-
-### What belongs in this phase
-- commit the current `index.html`, `style.css`, and `app.js`
-- add `data/boundaries.geojson`
-- verify the map loads locally
-- verify the boundary layer loads locally
-- verify the refresh button works
-- verify the debug panel updates
-- verify the selected-boundary interaction works
-- fix any visible text-encoding artifacts
-
-### Done means done
-- app opens locally without console errors
-- local boundaries load successfully
-- clicking a boundary updates the selection panel
-- no Supabase connection is required yet for the shell to feel stable
-
----
-
-## Phase 2 â€” Lock the data contract
-
-### Goal
-Define exactly what the frontend expects from the pipeline.
-
-### What belongs in this phase
-Create repo docs for:
-- `events_active_snapshot.csv`
-- `export_confirmed_verified.csv`
-- `meta/manifest.json`
-
-Define:
-- canonical column names
-- required join fields
-- required spatial fields
-- optional fallback title/date/address fields
-- which file is authoritative for what purpose
-
-### Current frontend assumptions
-- join key comes from `row_id`, `event_id`, `calendar_id`
-- export rows provide coordinates
-- manifest provides `updated_at`
-
-### Done means done
-- `docs/data-contract.md` exists
-- anyone reading the repo can tell exactly what each file must contain
-- future script changes will not silently break the frontend
-
----
-
-## Phase 3 â€” Complete the delivery pipeline
-
-### Goal
-Make the data pipeline reliable from Apps Script to Supabase.
-
-### What belongs in this phase
-- keep Drive output as fallback
-- upload both canonical CSVs to stable Supabase paths
-- upload `meta/manifest.json` only after both CSV uploads succeed
-- store Supabase secrets in Apps Script properties
-- add logging and success/failure reporting
-- manually test uploads
-- only then add the time trigger
-
-### Done means done
-- one manual run updates both CSVs and the manifest in Supabase
-- files are readable at stable URLs
-- manifest timestamp reflects the latest successful write
-- failed uploads are clearly visible and not silently ignored
-
----
-
-## Phase 4 â€” Verify live frontend loading
-
-### Goal
-Make the frontend reliably consume live Supabase data.
-
-### What belongs in this phase
-- set `CONFIG.supabaseBaseUrl`
-- fetch manifest
-- fetch both CSVs
-- parse both cleanly
-- log row counts
-- verify join results
-- surface failures clearly in the status panel
-
-### Done means done
-- manifest loads
-- both CSVs load
-- joined rows count is credible
-- unmatched rows are understandable
-- the app can be refreshed and reload fresh data
-
----
-
-## Phase 5 â€” First live operational map
-
-### Goal
-Make RWK genuinely useful as a spatial viewer.
-
-### What belongs in this phase
-- render markers from verified export rows
-- ensure markers only plot with valid coordinates
-- improve popup content slightly
-- fit map to marker bounds when visible rows exist
-- verify that boundary selection filters visible markers correctly
-
-### Done means done
-- map shows real points from live data
-- clicking a boundary changes visible point count
-- popup data is useful enough for operational inspection
-- visible count and join count are trustworthy
-
----
-
-## Phase 6 â€” Core operational filters
-
-### Goal
-Introduce the first truly useful filtering model.
-
-### What belongs in this phase
-Add a small filter set first:
-- keyword search
-- year
-- organizer
-- status
-- clear all
-
-Then optionally:
-- day of week
-- confirmed-only toggle
-- simple sort mode
-
-Also in this phase:
-- add derived runtime fields
-- normalized date
-- year
-- day of week
-- normalized organizer
-
-### Done means done
-- UI has a simple filter area
-- filters update the visible marker set
-- visible counts update live
-- reset returns the expected full view
-
----
-
-## Phase 7 â€” Derived analytics and revisit logic
-
-### Goal
-Make the data more intelligent.
-
-### What belongs in this phase
-- define `site_key`
-- calculate `visit_count`
-- calculate `visit_rank`
-- validate site grouping against real examples
-- add revisit filters
-
-### Done means done
-- repeated sites are grouped consistently
-- revisit filters behave predictably
-- summary metrics are accurate enough to trust
-
----
-
-## Phase 8 â€” Saved views, origins, and route-oriented expansion
-
-### Goal
-Add higher-order usability without destabilizing the core.
-
-### What belongs in this phase
-First:
-- save current filters to localStorage
-- list saved views
-- apply / rename / delete saved views
-
-Then:
-- add origin markers
-- add warehouse/showroom dataset
-- add distance bands
-- add route candidate views
-
-### Done means done
-- reusable views can be restored quickly
-- origin points are visually distinct
-- route-oriented subsets can be explored
-- core map/filter flow remains stable
-
----
-
-## What to avoid early
-
-- do not split `app.js` yet
-- do not add a framework
-- do not build advanced saved-query UX before basic filters
-- do not mix historical backfill work into shell and pipeline stabilization
-
----
-
-## Current recommended repo additions
-
-At this stage, the repo should add:
-
-- `data/boundaries.geojson`
-- `docs/data-contract.md`
-- `docs/build-plan.md`
+[
+  {
+    "id": "origin_warehouse_caldari",
+    "name": "Caldari",
+    "type": "warehouse",
+    "address": "370 Caldari Rd, Vaughan, ON L4K 4J4",
+    "latitude": 43.82669297,
+    "longitude": -79.5309473,
+    "isActive": true,
+    "notes": ""
+  },
+  {
+    "id": "origin_warehouse_hanlan",
+    "name": "Hanlan",
+    "type": "warehouse",
+    "address": "321 Hanlan Rd, Woodbridge, ON L4L 3R7",
+    "latitude": 43.77015661,
+    "longitude": -79.5562171,
+    "isActive": true,
+    "notes": ""
+  },
+  {
+    "id": "origin_showroom_peterborough",
+    "name": "Peterborough Showroom",
+    "type": "showroom",
+    "address": "701 The Queensway Unit 1, Peterborough, ON K9J 7H2",
+    "latitude": 44.27874317,
+    "longitude": -78.33533293,
+    "isActive": true,
+    "notes": ""
+  },
+  {
+    "id": "origin_showroom_barrie",
+    "name": "Barrie Showroom",
+    "type": "showroom",
+    "address": "45 Commerce Park Dr Unit B, Barrie, ON L4N 9P6",
+    "latitude": 44.32697651,
+    "longitude": -79.68552905,
+    "isActive": true,
+    "notes": ""
+  },
+  {
+    "id": "origin_showroom_newmarket",
+    "name": "Newmarket Showroom",
+    "type": "showroom",
+    "address": "18170 Yonge St Unit A1A, East Gwillimbury, ON L9N 0J3",
+    "latitude": 44.07185091,
+    "longitude": -79.48691117,
+    "isActive": true,
+    "notes": ""
+  },
+  {
+    "id": "origin_showroom_pickering",
+    "name": "Pickering Showroom",
+    "type": "showroom",
+    "address": "1899 Brock Rd, Pickering, ON L1V 4H7",
+    "latitude": 43.84576978,
+    "longitude": -79.07049085,
+    "isActive": true,
+    "notes": ""
+  },
+  {
+    "id": "origin_showroom_north_york",
+    "name": "North York Showroom",
+    "type": "showroom",
+    "address": "81 Gerry Fitzgerald Dr Unit A4, Toronto, ON M3J 3N4",
+    "latitude": 43.7847356,
+    "longitude": -79.47348244,
+    "isActive": true,
+    "notes": ""
+  },
+  {
+    "id": "origin_showroom_mississauga",
+    "name": "Mississauga Showroom",
+    "type": "showroom",
+    "address": "1476 Dundas St E, Mississauga, ON L4X 1L4",
+    "latitude": 43.61020873,
+    "longitude": -79.58008461,
+    "isActive": true,
+    "notes": ""
+  },
+  {
+    "id": "origin_showroom_oakville",
+    "name": "Oakville Showroom",
+    "type": "showroom",
+    "address": "3499 Wyecroft Rd L5, Oakville, ON L6L 0B6",
+    "latitude": 43.39834542,
+    "longitude": -79.75028814,
+    "isActive": true,
+    "notes": ""
+  },
+  {
+    "id": "origin_showroom_cambridge",
+    "name": "Cambridge Showroom",
+    "type": "showroom",
+    "address": "75 Pinebush Rd unit d7, Cambridge, ON N1R 7J8",
+    "latitude": 43.40802102,
+    "longitude": -80.3226995,
+    "isActive": true,
+    "notes": ""
+  },
+  {
+    "id": "origin_showroom_brampton",
+    "name": "Brampton Showroom",
+    "type": "showroom",
+    "address": "50 Peel Centre Dr, Brampton, ON L6T 3R5",
+    "latitude": 43.71454509,
+    "longitude": -79.72641717,
+    "isActive": true,
+    "notes": ""
+  }
+]
 
 
 ===== docs\data-contract.md =====
@@ -2663,225 +4118,290 @@ The manifest file must be valid JSON.
 
 ## `docs/build-plan.md`
 
-```md
-# RWK Build Plan
+Youâ€™ve got the core map shell working, plus a meaningful first operational filtering model. The project is no longer in â€œprove the pipelineâ€ mode. It is now at the point where the missing work is less about basic loading and more about turning RWK into an operational decision tool.
 
-This file stores the current phased build path for the RWK project.
+What appears completed already
 
-It exists so the repo itself contains the agreed development sequence.
+The current build has these foundations in place:
 
----
+local boundary loading and clickable boundary selection
+live Supabase manifest + CSV loading
+CSV parsing and join logic
+derived runtime fields for organizer, year, weekday, time-window, site key, visit count, and boundary membership
+dynamic filter UI for organizer, weekday, visit count, time window, year, and keyword
+revisit/site-count logic up to 10 visits
+status, results, and debug panels
+popup content that is useful for inspection already
 
-## Phase 1 â€” Freeze the baseline shell
+That means Phases 1 through 7 are largely present in functional form, even if the documentation and sequencing got blurred during iteration.
 
-### Goal
-Turn the current exported shell into the official repo starting point.
+What is still missing
 
-### What belongs in this phase
-- commit the current `index.html`, `style.css`, and `app.js`
-- add `data/boundaries.geojson`
-- verify the map loads locally
-- verify the boundary layer loads locally
-- verify the refresh button works
-- verify the debug panel updates
-- verify the selected-boundary interaction works
-- fix any visible text-encoding artifacts
+There are six major gaps.
 
-### Done means done
-- app opens locally without console errors
-- local boundaries load successfully
-- clicking a boundary updates the selection panel
-- no Supabase connection is required yet for the shell to feel stable
+1. Origin-point architecture
+Your own note is correct: warehouse, showroom, and other origin points are not yet implemented. The existing app only knows how to render job/event points. There is no second dataset class with its own marker symbology, popup model, enable/disable toggles, or relationship to jobs. The original plan explicitly called for origin markers, warehouse/showroom data, distance bands, and route-oriented subsets; those are not in the current code yet.
 
----
+2. Statistics layer
+You have derived fields, but not a real analytics surface. Right now the app reports counts like joined rows, visible markers, and filtered rows. Whatâ€™s missing is a metrics engine that can answer operational questions such as:
 
-## Phase 2 â€” Lock the data contract
+jobs by organizer
+jobs by municipality
+visits per site
+unique sites vs total visits
+upcoming jobs by next 7/30 days
+revisit-heavy addresses
+jobs by weekday
+origin-to-job proximity summaries
+municipal coverage summaries
 
-### Goal
-Define exactly what the frontend expects from the pipeline.
+The plan called for â€œderived analytics,â€ but the UI is still mostly a filter shell rather than a dashboard.
 
-### What belongs in this phase
-Create repo docs for:
-- `events_active_snapshot.csv`
-- `export_confirmed_verified.csv`
-- `meta/manifest.json`
+3. Downloadable reports
+There is no report-generation path yet. No CSV export from filtered results, no summary export, no per-boundary report, no â€œcurrent viewâ€ download, no route candidate output. That is a major missing bridge between visualization and action.
 
-Define:
-- canonical column names
-- required join fields
-- required spatial fields
-- optional fallback title/date/address fields
-- which file is authoritative for what purpose
+4. Saved views / persistence
+The plan called for localStorage-backed saved views, but the current implementation does not preserve filter states, saved named presets, or view restoration. That becomes important once the filter model grows more complex.
 
-### Current frontend assumptions
-- join key comes from `row_id`, `event_id`, `calendar_id`
-- export rows provide coordinates
-- manifest provides `updated_at`
+5. Text-encoding cleanup and repo/doc cleanup
+The export still shows encoding artifacts like Ã¢â‚¬â€ and BootingÃ¢â‚¬Â¦. There is also a structural doc inconsistency: plan.txt and docs/design-plan.md both appear to contain the same build-plan content, and the repo references docs/build-plan.md while the export shows docs/design-plan.md. That should be normalized so the repo has one authoritative roadmap file.
 
-### Done means done
-- `docs/data-contract.md` exists
-- anyone reading the repo can tell exactly what each file must contain
-- future script changes will not silently break the frontend
+6. Route-oriented decision support
+The plan mentioned route candidate views and distance bands, but nothing in app.js currently computes distance from an origin, groups jobs by proximity, or ranks route candidates. This is the big missing piece if RWK is meant to support dispatch and planning rather than simple map inspection.
 
----
+Where I would go from here
 
-## Phase 3 â€” Complete the delivery pipeline
+I would re-establish the project in a new, clearer phase sequence based on the reality of what is already built.
 
-### Goal
-Make the data pipeline reliable from Apps Script to Supabase.
+Recommended current phase map
 
-### What belongs in this phase
-- keep Drive output as fallback
-- upload both canonical CSVs to stable Supabase paths
-- upload `meta/manifest.json` only after both CSV uploads succeed
-- store Supabase secrets in Apps Script properties
-- add logging and success/failure reporting
-- manually test uploads
-- only then add the time trigger
+Phase A â€” Stabilization and cleanup
+This is a short correction pass.
 
-### Done means done
-- one manual run updates both CSVs and the manifest in Supabase
-- files are readable at stable URLs
-- manifest timestamp reflects the latest successful write
-- failed uploads are clearly visible and not silently ignored
+Deliverables:
 
----
+fix all encoding artifacts in HTML/CSS/JS/docs
+normalize docs so there is one authoritative build-plan file
+confirm current filters are still behaving correctly after cleanup
+add a small â€œdata schema notesâ€ section for future origin/report files
 
-## Phase 4 â€” Verify live frontend loading
+This is quick, but worthwhile, because it prevents drift before adding more systems.
 
-### Goal
-Make the frontend reliably consume live Supabase data.
+Phase B â€” Origin dataset support
+This should be the next real feature phase.
 
-### What belongs in this phase
-- set `CONFIG.supabaseBaseUrl`
-- fetch manifest
-- fetch both CSVs
-- parse both cleanly
-- log row counts
-- verify join results
-- surface failures clearly in the status panel
+Add:
 
-### Done means done
-- manifest loads
-- both CSVs load
-- joined rows count is credible
-- unmatched rows are understandable
-- the app can be refreshed and reload fresh data
+a new origin data source, ideally data/origins.json or data/origins.geojson
+origin types: warehouse, showroom, office, supplier, other
+a distinct marker style from job markers
+origin visibility toggles
+popup fields for name, type, address, notes, active status
+optional â€œdefault originâ€ selection in UI
 
----
+At the code level, this means creating a second runtime collection, probably something like:
 
-## Phase 5 â€” First live operational map
+state.originRows
+state.visibleOriginRows
+state.selectedOriginId
 
-### Goal
-Make RWK genuinely useful as a spatial viewer.
+Do not merge origins into the same row model as jobs. Keep them as a separate entity class.
 
-### What belongs in this phase
-- render markers from verified export rows
-- ensure markers only plot with valid coordinates
-- improve popup content slightly
-- fit map to marker bounds when visible rows exist
-- verify that boundary selection filters visible markers correctly
+Phase C â€” Distance and route analytics
+Once origins exist, make them useful.
 
-### Done means done
-- map shows real points from live data
-- clicking a boundary changes visible point count
-- popup data is useful enough for operational inspection
-- visible count and join count are trustworthy
+Add derived calculations:
 
----
+straight-line distance from selected origin to each visible job
+distance band classification, such as 0â€“10 km, 10â€“25 km, 25â€“50 km, 50+ km
+nearest-origin assignment for each job
+summary counts by origin
+filter for â€œjobs near selected originâ€
+sort visible results by nearest distance
 
-## Phase 6 â€” Core operational filters
+This gives you the first route-oriented decision surface without forcing full routing APIs yet.
 
-### Goal
-Introduce the first truly useful filtering model.
+Phase D â€” Statistics engine
+Build a reusable analytics layer from the already-derived rows.
 
-### What belongs in this phase
-Add a small filter set first:
-- keyword search
-- year
-- organizer
-- status
-- clear all
+I would add a pure function that receives the current filtered/visible rows and returns a stats object. For example:
 
-Then optionally:
-- day of week
-- confirmed-only toggle
-- simple sort mode
+total visits
+unique sites
+revisit rate
+jobs by organizer
+jobs by municipality
+jobs by weekday
+jobs by year
+upcoming counts
+average visits per site
+top 10 revisited sites
+top municipalities by job volume
+selected-origin summaries when applicable
 
-Also in this phase:
-- add derived runtime fields
-- normalized date
-- year
-- day of week
-- normalized organizer
+Then expose that in a new â€œAnalyticsâ€ card in the sidebar.
 
-### Done means done
-- UI has a simple filter area
-- filters update the visible marker set
-- visible counts update live
-- reset returns the expected full view
+Phase E â€” Download/report system
+After stats exist, add downloads.
 
----
+Start simple with three outputs:
 
-## Phase 7 â€” Derived analytics and revisit logic
+filtered jobs CSV
+summary metrics CSV
+site summary CSV
 
-### Goal
-Make the data more intelligent.
+Then later:
 
-### What belongs in this phase
-- define `site_key`
-- calculate `visit_count`
-- calculate `visit_rank`
-- validate site grouping against real examples
-- add revisit filters
+municipality summary CSV
+origin distance report CSV
+upcoming jobs CSV
+current map view JSON snapshot
 
-### Done means done
-- repeated sites are grouped consistently
-- revisit filters behave predictably
-- summary metrics are accurate enough to trust
+This is likely best done client-side first using Blob downloads. No server is needed yet.
 
----
+Phase F â€” Saved views
+Only after origin + distance + stats + reports are working.
 
-## Phase 8 â€” Saved views, origins, and route-oriented expansion
+Persist:
 
-### Goal
-Add higher-order usability without destabilizing the core.
+organizer filters
+weekday filters
+visit count filters
+time window
+year
+keyword
+selected boundary
+selected origin
+distance band
+sort mode
 
-### What belongs in this phase
-First:
-- save current filters to localStorage
-- list saved views
-- apply / rename / delete saved views
+Then add:
 
-Then:
-- add origin markers
-- add warehouse/showroom dataset
-- add distance bands
-- add route candidate views
+save current view
+load saved view
+rename saved view
+delete saved view
 
-### Done means done
-- reusable views can be restored quickly
-- origin points are visually distinct
-- route-oriented subsets can be explored
-- core map/filter flow remains stable
+That will make the app operationally reusable day-to-day.
 
----
+Practical next steps Iâ€™d recommend now
 
-## What to avoid early
+Do a cleanup pass first.
+Then implement origins before reports.
+Then implement a small analytics engine.
+Then add downloadable reports from the analytics + filtered rows.
+Then add saved views.
 
-- do not split `app.js` yet
-- do not add a framework
-- do not build advanced saved-query UX before basic filters
-- do not mix historical backfill work into shell and pipeline stabilization
+That order matters because reports should export meaningful analysis, not just raw rows.
 
----
+Concrete design updates I would introduce
 
-## Current recommended repo additions
+For data files, I would add these new repo artifacts:
 
-At this stage, the repo should add:
+data/origins.json or data/origins.geojson
+docs/origin-data-contract.md
+docs/report-spec.md
 
-- `data/boundaries.geojson`
-- `docs/data-contract.md`
-- `docs/build-plan.md`
+For runtime architecture, I would add these state areas:
+
+state.origins
+state.visibleOrigins
+state.selectedOrigin
+state.analytics
+state.savedViews
+
+For UI, I would add these sidebar cards:
+
+Origins
+Analytics
+Reports
+Saved views
+
+For filters, I would add next:
+
+origin selector
+distance band selector
+sort selector
+maybe municipality toggle/search if that becomes operationally important
+
+Suggested report set for v1
+
+A good first reporting bundle would be:
+
+Filtered jobs export
+Every currently visible row, with all derived fields appended:
+
+organizer
+weekday
+boundary name
+visit count
+visit bucket
+time window
+selected origin
+distance from origin
+
+Site summary export
+One row per _siteKey:
+
+normalized address/site label
+total visits
+first date
+last date
+organizers involved
+municipality
+
+Municipality summary export
+One row per boundary:
+
+total jobs
+unique sites
+upcoming jobs
+revisit-heavy sites count
+
+Origin proximity export
+If an origin is selected:
+
+each visible row
+distance from origin
+distance band
+rank by distance
+
+What has been accomplished so far, in project terms
+
+Youâ€™ve already solved the hard early-risk items:
+
+data pipeline contract
+live ingestion
+join reliability
+boundary interaction
+derived filters
+revisit classification
+temporal filtering
+
+Those were the uncertain parts. The remaining work is now mostly product-shaping and operational modeling rather than technical rescue.
+
+What is left before the project feels â€œwholeâ€
+
+The app becomes substantially more complete once it can do these four things together:
+
+show jobs
+show origins
+explain the current dataset statistically
+let the user export the current analysis
+
+That is the shortest path from â€œviewerâ€ to â€œoperational platform.â€
+
+My recommendation for the very next implementation target
+
+Build origin support + distance derivation next. That unlocks the rest:
+
+analytics become richer
+reports become meaningful
+route-oriented filtering becomes possible
+saved views become worth having
+
+After that, the report system should come immediately.
+
+A good discipline going forward: every new phase should end with three artifacts updated together â€” the code, the data contract doc, and the build-plan status note. That will keep the plot from getting lost again.
 
 

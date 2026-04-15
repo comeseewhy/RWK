@@ -50,7 +50,7 @@ Thumbs.db
 
 # (Optional future)
 # Allow specific JSON configs if you add them later:
-# !data/*.json
+!data/*.json
 # !config/*.json
 
 # =========================

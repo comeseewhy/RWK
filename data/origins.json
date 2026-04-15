@@ -1,0 +1,112 @@
+[
+  {
+    "id": "origin_warehouse_caldari",
+    "name": "Caldari",
+    "type": "warehouse",
+    "address": "370 Caldari Rd, Vaughan, ON L4K 4J4",
+    "latitude": 43.82669297,
+    "longitude": -79.5309473,
+    "isActive": true,
+    "notes": ""
+  },
+  {
+    "id": "origin_warehouse_hanlan",
+    "name": "Hanlan",
+    "type": "warehouse",
+    "address": "321 Hanlan Rd, Woodbridge, ON L4L 3R7",
+    "latitude": 43.77015661,
+    "longitude": -79.5562171,
+    "isActive": true,
+    "notes": ""
+  },
+  {
+    "id": "origin_showroom_peterborough",
+    "name": "Peterborough Showroom",
+    "type": "showroom",
+    "address": "701 The Queensway Unit 1, Peterborough, ON K9J 7H2",
+    "latitude": 44.27874317,
+    "longitude": -78.33533293,
+    "isActive": true,
+    "notes": ""
+  },
+  {
+    "id": "origin_showroom_barrie",
+    "name": "Barrie Showroom",
+    "type": "showroom",
+    "address": "45 Commerce Park Dr Unit B, Barrie, ON L4N 9P6",
+    "latitude": 44.32697651,
+    "longitude": -79.68552905,
+    "isActive": true,
+    "notes": ""
+  },
+  {
+    "id": "origin_showroom_newmarket",
+    "name": "Newmarket Showroom",
+    "type": "showroom",
+    "address": "18170 Yonge St Unit A1A, East Gwillimbury, ON L9N 0J3",
+    "latitude": 44.07185091,
+    "longitude": -79.48691117,
+    "isActive": true,
+    "notes": ""
+  },
+  {
+    "id": "origin_showroom_pickering",
+    "name": "Pickering Showroom",
+    "type": "showroom",
+    "address": "1899 Brock Rd, Pickering, ON L1V 4H7",
+    "latitude": 43.84576978,
+    "longitude": -79.07049085,
+    "isActive": true,
+    "notes": ""
+  },
+  {
+    "id": "origin_showroom_north_york",
+    "name": "North York Showroom",
+    "type": "showroom",
+    "address": "81 Gerry Fitzgerald Dr Unit A4, Toronto, ON M3J 3N4",
+    "latitude": 43.7847356,
+    "longitude": -79.47348244,
+    "isActive": true,
+    "notes": ""
+  },
+  {
+    "id": "origin_showroom_mississauga",
+    "name": "Mississauga Showroom",
+    "type": "showroom",
+    "address": "1476 Dundas St E, Mississauga, ON L4X 1L4",
+    "latitude": 43.61020873,
+    "longitude": -79.58008461,
+    "isActive": true,
+    "notes": ""
+  },
+  {
+    "id": "origin_showroom_oakville",
+    "name": "Oakville Showroom",
+    "type": "showroom",
+    "address": "3499 Wyecroft Rd L5, Oakville, ON L6L 0B6",
+    "latitude": 43.39834542,
+    "longitude": -79.75028814,
+    "isActive": true,
+    "notes": ""
+  },
+  {
+    "id": "origin_showroom_cambridge",
+    "name": "Cambridge Showroom",
+    "type": "showroom",
+    "address": "75 Pinebush Rd unit d7, Cambridge, ON N1R 7J8",
+    "latitude": 43.40802102,
+    "longitude": -80.3226995,
+    "isActive": true,
+    "notes": ""
+  },
+  {
+    "id": "origin_showroom_brampton",
+    "name": "Brampton Showroom",
+    "type": "showroom",
+    "address": "50 Peel Centre Dr, Brampton, ON L6T 3R5",
+    "latitude": 43.71454509,
+    "longitude": -79.72641717,
+    "isActive": true,
+    "notes": ""
+  }
+]

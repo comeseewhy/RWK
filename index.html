@@ -9,7 +9,7 @@
   <title>RWK Spatial Viewer</title>
   <meta
     name="description"
-    content="RWK spatial viewer for operational map data, boundaries, and exported job records."
+    content="RWK spatial viewer for operational map data, boundaries, origins, and exported job records."
   />
 
   <link
@@ -34,17 +34,17 @@
     </header>
 
     <main class="layout">
-      <section class="map-section">
+      <section class="map-section" aria-label="Map section">
         <div id="map" aria-label="Map"></div>
       </section>
 
       <aside class="panel" aria-label="Map controls and status">
-        <section class="panel-card">
-          <h2 class="panel-card__title">Status</h2>
+        <section class="panel-card" aria-labelledby="statusCardTitle">
+          <h2 id="statusCardTitle" class="panel-card__title">Status</h2>
           <dl class="stats-list">
             <div class="stats-row">
               <dt>App</dt>
-              <dd id="appStatus">Booting…</dd>
+              <dd id="appStatus">Booting...</dd>
             </div>
             <div class="stats-row">
               <dt>Manifest</dt>
@@ -73,8 +73,8 @@
           </dl>
         </section>
 
-        <section class="panel-card">
-          <h2 class="panel-card__title">Results</h2>
+        <section class="panel-card" aria-labelledby="resultsCardTitle">
+          <h2 id="resultsCardTitle" class="panel-card__title">Results</h2>
           <dl class="stats-list">
             <div class="stats-row">
               <dt>Coordinate-valid rows</dt>
@@ -93,13 +93,14 @@
               <dd id="visibleMarkerCount">0</dd>
             </div>
           </dl>
+
           <p id="resultsMessage" class="panel-text panel-text--compact">
             No filters applied yet.
           </p>
         </section>
 
-        <section class="panel-card">
-          <h2 class="panel-card__title">Population filters</h2>
+        <section class="panel-card" aria-labelledby="filtersCardTitle">
+          <h2 id="filtersCardTitle" class="panel-card__title">Population filters</h2>
 
           <div class="form-grid">
             <div class="form-field">
@@ -108,7 +109,7 @@
                 id="keywordInput"
                 class="input-control"
                 type="text"
-                placeholder="Search title, address, organizer, notes…"
+                placeholder="Search title, address, organizer, notes..."
                 autocomplete="off"
               />
             </div>
@@ -132,6 +133,24 @@
             </div>
 
             <div class="form-field">
+              <span class="form-label">Visit count</span>
+              <div
+                id="visitToggleGroup"
+                class="toggle-group"
+                aria-label="Visit count filters"
+              ></div>
+            </div>
+
+            <div class="form-field">
+              <span class="form-label">Time window</span>
+              <div
+                id="timeToggleGroup"
+                class="toggle-group"
+                aria-label="Time window filters"
+              ></div>
+            </div>
+
+            <div class="form-field">
               <label class="form-label" for="yearFilter">Year</label>
               <select id="yearFilter" class="input-control">
                 <option value="all">All years</option>
@@ -146,12 +165,52 @@
           </div>
         </section>
 
-        <section class="panel-card">
-          <h2 class="panel-card__title">Selection</h2>
+        <section class="panel-card" aria-labelledby="originsCardTitle">
+          <h2 id="originsCardTitle" class="panel-card__title">Origins</h2>
+
+          <div class="form-grid">
+            <div class="form-field">
+              <span class="form-label">Origin type</span>
+              <div
+                id="originTypeToggleGroup"
+                class="toggle-group"
+                aria-label="Origin type filters"
+              ></div>
+            </div>
+
+            <div class="form-field">
+              <span class="form-label">Selected origin</span>
+              <div
+                id="selectedOriginDisplay"
+                class="selection-pill selection-pill--empty"
+                data-origin-type=""
+              >
+                None
+              </div>
+            </div>
+          </div>
+
+          <div class="button-row">
+            <button id="clearOriginButton" class="button" type="button">
+              Clear origin
+            </button>
+          </div>
+        </section>
+
+        <section class="panel-card" aria-labelledby="selectionCardTitle">
+          <h2 id="selectionCardTitle" class="panel-card__title">Selection</h2>
           <dl class="stats-list">
             <div class="stats-row">
               <dt>Selected boundary</dt>
               <dd id="selectedBoundaryName">None</dd>
+            </div>
+            <div class="stats-row">
+              <dt>Selected origin</dt>
+              <dd id="selectedOriginName">None</dd>
+            </div>
+            <div class="stats-row">
+              <dt>Origin type</dt>
+              <dd id="selectedOriginType">—</dd>
             </div>
             <div class="stats-row">
               <dt>Boundary features</dt>
@@ -163,24 +222,28 @@
             <button id="clearBoundaryButton" class="button" type="button">
               Clear boundary
             </button>
+            <button id="clearSelectionButton" class="button" type="button">
+              Clear all selection
+            </button>
           </div>
         </section>
 
-        <section class="panel-card">
-          <h2 class="panel-card__title">Data notes</h2>
+        <section class="panel-card" aria-labelledby="notesCardTitle">
+          <h2 id="notesCardTitle" class="panel-card__title">Data notes</h2>
           <p class="panel-text">
-            This pass shifts RWK toward a deliberate population-selection workflow
-            instead of showing the raw map output by default.
+            This pass introduces origin locations as a second dataset class,
+            kept separate from job rows and rendered independently on the map.
           </p>
           <p class="panel-text">
-            Markers appear only after a population filter is chosen, and boundary
-            highlighting now reflects the currently populated selection.
+            Nearest-origin fields are derived during load so later distance
+            filtering, route-oriented sorting, and report exports can build on
+            the same runtime model.
           </p>
         </section>
 
-        <section class="panel-card">
-          <h2 class="panel-card__title">Debug</h2>
-          <pre id="debugOutput" class="debug-output">Starting…</pre>
+        <section class="panel-card" aria-labelledby="debugCardTitle">
+          <h2 id="debugCardTitle" class="panel-card__title">Debug</h2>
+          <pre id="debugOutput" class="debug-output">Starting...</pre>
         </section>
       </aside>
     </main>

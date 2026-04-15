@@ -3,223 +3,288 @@
 
 ## `docs/build-plan.md`
 
-```md
-# RWK Build Plan
+You’ve got the core map shell working, plus a meaningful first operational filtering model. The project is no longer in “prove the pipeline” mode. It is now at the point where the missing work is less about basic loading and more about turning RWK into an operational decision tool.
 
-This file stores the current phased build path for the RWK project.
+What appears completed already
 
-It exists so the repo itself contains the agreed development sequence.
+The current build has these foundations in place:
 
----
+local boundary loading and clickable boundary selection
+live Supabase manifest + CSV loading
+CSV parsing and join logic
+derived runtime fields for organizer, year, weekday, time-window, site key, visit count, and boundary membership
+dynamic filter UI for organizer, weekday, visit count, time window, year, and keyword
+revisit/site-count logic up to 10 visits
+status, results, and debug panels
+popup content that is useful for inspection already
 
-## Phase 1 — Freeze the baseline shell
+That means Phases 1 through 7 are largely present in functional form, even if the documentation and sequencing got blurred during iteration.
 
-### Goal
-Turn the current exported shell into the official repo starting point.
+What is still missing
 
-### What belongs in this phase
-- commit the current `index.html`, `style.css`, and `app.js`
-- add `data/boundaries.geojson`
-- verify the map loads locally
-- verify the boundary layer loads locally
-- verify the refresh button works
-- verify the debug panel updates
-- verify the selected-boundary interaction works
-- fix any visible text-encoding artifacts
+There are six major gaps.
 
-### Done means done
-- app opens locally without console errors
-- local boundaries load successfully
-- clicking a boundary updates the selection panel
-- no Supabase connection is required yet for the shell to feel stable
+1. Origin-point architecture
+Your own note is correct: warehouse, showroom, and other origin points are not yet implemented. The existing app only knows how to render job/event points. There is no second dataset class with its own marker symbology, popup model, enable/disable toggles, or relationship to jobs. The original plan explicitly called for origin markers, warehouse/showroom data, distance bands, and route-oriented subsets; those are not in the current code yet.
 
----
+2. Statistics layer
+You have derived fields, but not a real analytics surface. Right now the app reports counts like joined rows, visible markers, and filtered rows. What’s missing is a metrics engine that can answer operational questions such as:
 
-## Phase 2 — Lock the data contract
+jobs by organizer
+jobs by municipality
+visits per site
+unique sites vs total visits
+upcoming jobs by next 7/30 days
+revisit-heavy addresses
+jobs by weekday
+origin-to-job proximity summaries
+municipal coverage summaries
 
-### Goal
-Define exactly what the frontend expects from the pipeline.
+The plan called for “derived analytics,” but the UI is still mostly a filter shell rather than a dashboard.
 
-### What belongs in this phase
-Create repo docs for:
-- `events_active_snapshot.csv`
-- `export_confirmed_verified.csv`
-- `meta/manifest.json`
+3. Downloadable reports
+There is no report-generation path yet. No CSV export from filtered results, no summary export, no per-boundary report, no “current view” download, no route candidate output. That is a major missing bridge between visualization and action.
 
-Define:
-- canonical column names
-- required join fields
-- required spatial fields
-- optional fallback title/date/address fields
-- which file is authoritative for what purpose
+4. Saved views / persistence
+The plan called for localStorage-backed saved views, but the current implementation does not preserve filter states, saved named presets, or view restoration. That becomes important once the filter model grows more complex.
 
-### Current frontend assumptions
-- join key comes from `row_id`, `event_id`, `calendar_id`
-- export rows provide coordinates
-- manifest provides `updated_at`
+5. Text-encoding cleanup and repo/doc cleanup
+The export still shows encoding artifacts like â€” and Bootingâ€¦. There is also a structural doc inconsistency: plan.txt and docs/design-plan.md both appear to contain the same build-plan content, and the repo references docs/build-plan.md while the export shows docs/design-plan.md. That should be normalized so the repo has one authoritative roadmap file.
 
-### Done means done
-- `docs/data-contract.md` exists
-- anyone reading the repo can tell exactly what each file must contain
-- future script changes will not silently break the frontend
+6. Route-oriented decision support
+The plan mentioned route candidate views and distance bands, but nothing in app.js currently computes distance from an origin, groups jobs by proximity, or ranks route candidates. This is the big missing piece if RWK is meant to support dispatch and planning rather than simple map inspection.
 
----
+Where I would go from here
 
-## Phase 3 — Complete the delivery pipeline
+I would re-establish the project in a new, clearer phase sequence based on the reality of what is already built.
 
-### Goal
-Make the data pipeline reliable from Apps Script to Supabase.
+Recommended current phase map
 
-### What belongs in this phase
-- keep Drive output as fallback
-- upload both canonical CSVs to stable Supabase paths
-- upload `meta/manifest.json` only after both CSV uploads succeed
-- store Supabase secrets in Apps Script properties
-- add logging and success/failure reporting
-- manually test uploads
-- only then add the time trigger
+Phase A — Stabilization and cleanup
+This is a short correction pass.
 
-### Done means done
-- one manual run updates both CSVs and the manifest in Supabase
-- files are readable at stable URLs
-- manifest timestamp reflects the latest successful write
-- failed uploads are clearly visible and not silently ignored
+Deliverables:
 
----
+fix all encoding artifacts in HTML/CSS/JS/docs
+normalize docs so there is one authoritative build-plan file
+confirm current filters are still behaving correctly after cleanup
+add a small “data schema notes” section for future origin/report files
 
-## Phase 4 — Verify live frontend loading
+This is quick, but worthwhile, because it prevents drift before adding more systems.
 
-### Goal
-Make the frontend reliably consume live Supabase data.
+Phase B — Origin dataset support
+This should be the next real feature phase.
 
-### What belongs in this phase
-- set `CONFIG.supabaseBaseUrl`
-- fetch manifest
-- fetch both CSVs
-- parse both cleanly
-- log row counts
-- verify join results
-- surface failures clearly in the status panel
+Add:
 
-### Done means done
-- manifest loads
-- both CSVs load
-- joined rows count is credible
-- unmatched rows are understandable
-- the app can be refreshed and reload fresh data
+a new origin data source, ideally data/origins.json or data/origins.geojson
+origin types: warehouse, showroom, office, supplier, other
+a distinct marker style from job markers
+origin visibility toggles
+popup fields for name, type, address, notes, active status
+optional “default origin” selection in UI
 
----
+At the code level, this means creating a second runtime collection, probably something like:
 
-## Phase 5 — First live operational map
+state.originRows
+state.visibleOriginRows
+state.selectedOriginId
 
-### Goal
-Make RWK genuinely useful as a spatial viewer.
+Do not merge origins into the same row model as jobs. Keep them as a separate entity class.
 
-### What belongs in this phase
-- render markers from verified export rows
-- ensure markers only plot with valid coordinates
-- improve popup content slightly
-- fit map to marker bounds when visible rows exist
-- verify that boundary selection filters visible markers correctly
+Phase C — Distance and route analytics
+Once origins exist, make them useful.
 
-### Done means done
-- map shows real points from live data
-- clicking a boundary changes visible point count
-- popup data is useful enough for operational inspection
-- visible count and join count are trustworthy
+Add derived calculations:
 
----
+straight-line distance from selected origin to each visible job
+distance band classification, such as 0–10 km, 10–25 km, 25–50 km, 50+ km
+nearest-origin assignment for each job
+summary counts by origin
+filter for “jobs near selected origin”
+sort visible results by nearest distance
 
-## Phase 6 — Core operational filters
+This gives you the first route-oriented decision surface without forcing full routing APIs yet.
 
-### Goal
-Introduce the first truly useful filtering model.
+Phase D — Statistics engine
+Build a reusable analytics layer from the already-derived rows.
 
-### What belongs in this phase
-Add a small filter set first:
-- keyword search
-- year
-- organizer
-- status
-- clear all
+I would add a pure function that receives the current filtered/visible rows and returns a stats object. For example:
 
-Then optionally:
-- day of week
-- confirmed-only toggle
-- simple sort mode
+total visits
+unique sites
+revisit rate
+jobs by organizer
+jobs by municipality
+jobs by weekday
+jobs by year
+upcoming counts
+average visits per site
+top 10 revisited sites
+top municipalities by job volume
+selected-origin summaries when applicable
 
-Also in this phase:
-- add derived runtime fields
-- normalized date
-- year
-- day of week
-- normalized organizer
+Then expose that in a new “Analytics” card in the sidebar.
 
-### Done means done
-- UI has a simple filter area
-- filters update the visible marker set
-- visible counts update live
-- reset returns the expected full view
+Phase E — Download/report system
+After stats exist, add downloads.
 
----
+Start simple with three outputs:
 
-## Phase 7 — Derived analytics and revisit logic
+filtered jobs CSV
+summary metrics CSV
+site summary CSV
 
-### Goal
-Make the data more intelligent.
+Then later:
 
-### What belongs in this phase
-- define `site_key`
-- calculate `visit_count`
-- calculate `visit_rank`
-- validate site grouping against real examples
-- add revisit filters
+municipality summary CSV
+origin distance report CSV
+upcoming jobs CSV
+current map view JSON snapshot
 
-### Done means done
-- repeated sites are grouped consistently
-- revisit filters behave predictably
-- summary metrics are accurate enough to trust
+This is likely best done client-side first using Blob downloads. No server is needed yet.
 
----
+Phase F — Saved views
+Only after origin + distance + stats + reports are working.
 
-## Phase 8 — Saved views, origins, and route-oriented expansion
+Persist:
 
-### Goal
-Add higher-order usability without destabilizing the core.
+organizer filters
+weekday filters
+visit count filters
+time window
+year
+keyword
+selected boundary
+selected origin
+distance band
+sort mode
 
-### What belongs in this phase
-First:
-- save current filters to localStorage
-- list saved views
-- apply / rename / delete saved views
+Then add:
 
-Then:
-- add origin markers
-- add warehouse/showroom dataset
-- add distance bands
-- add route candidate views
+save current view
+load saved view
+rename saved view
+delete saved view
 
-### Done means done
-- reusable views can be restored quickly
-- origin points are visually distinct
-- route-oriented subsets can be explored
-- core map/filter flow remains stable
+That will make the app operationally reusable day-to-day.
 
----
+Practical next steps I’d recommend now
 
-## What to avoid early
+Do a cleanup pass first.
+Then implement origins before reports.
+Then implement a small analytics engine.
+Then add downloadable reports from the analytics + filtered rows.
+Then add saved views.
 
-- do not split `app.js` yet
-- do not add a framework
-- do not build advanced saved-query UX before basic filters
-- do not mix historical backfill work into shell and pipeline stabilization
+That order matters because reports should export meaningful analysis, not just raw rows.
 
----
+Concrete design updates I would introduce
 
-## Current recommended repo additions
+For data files, I would add these new repo artifacts:
 
-At this stage, the repo should add:
+data/origins.json or data/origins.geojson
+docs/origin-data-contract.md
+docs/report-spec.md
 
-- `data/boundaries.geojson`
-- `docs/data-contract.md`
-- `docs/build-plan.md`
+For runtime architecture, I would add these state areas:
+
+state.origins
+state.visibleOrigins
+state.selectedOrigin
+state.analytics
+state.savedViews
+
+For UI, I would add these sidebar cards:
+
+Origins
+Analytics
+Reports
+Saved views
+
+For filters, I would add next:
+
+origin selector
+distance band selector
+sort selector
+maybe municipality toggle/search if that becomes operationally important
+
+Suggested report set for v1
+
+A good first reporting bundle would be:
+
+Filtered jobs export
+Every currently visible row, with all derived fields appended:
+
+organizer
+weekday
+boundary name
+visit count
+visit bucket
+time window
+selected origin
+distance from origin
+
+Site summary export
+One row per _siteKey:
+
+normalized address/site label
+total visits
+first date
+last date
+organizers involved
+municipality
+
+Municipality summary export
+One row per boundary:
+
+total jobs
+unique sites
+upcoming jobs
+revisit-heavy sites count
+
+Origin proximity export
+If an origin is selected:
+
+each visible row
+distance from origin
+distance band
+rank by distance
+
+What has been accomplished so far, in project terms
+
+You’ve already solved the hard early-risk items:
+
+data pipeline contract
+live ingestion
+join reliability
+boundary interaction
+derived filters
+revisit classification
+temporal filtering
+
+Those were the uncertain parts. The remaining work is now mostly product-shaping and operational modeling rather than technical rescue.
+
+What is left before the project feels “whole”
+
+The app becomes substantially more complete once it can do these four things together:
+
+show jobs
+show origins
+explain the current dataset statistically
+let the user export the current analysis
+
+That is the shortest path from “viewer” to “operational platform.”
+
+My recommendation for the very next implementation target
+
+Build origin support + distance derivation next. That unlocks the rest:
+
+analytics become richer
+reports become meaningful
+route-oriented filtering becomes possible
+saved views become worth having
+
+After that, the report system should come immediately.
+
+A good discipline going forward: every new phase should end with three artifacts updated together — the code, the data contract doc, and the build-plan status note. That will keep the plot from getting lost again.

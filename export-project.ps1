@@ -20,7 +20,7 @@ $extraFiles = @(
     "README.md"
     "env.example"
     ".gitignore"
-    "plan.txt"
+    "data\origins.json"
 )
 
 # Add folder patterns here if you want to include more project files
