@@ -1,0 +1,340 @@
+Recommended phase structure
+
+I would structure RWK into 8 reasonably-sized phases.
+
+This is a better size than 10+ microphases because each phase can produce something visible and testable without becoming vague.
+
+Phase 1 — Freeze the baseline shell
+Goal
+
+Turn the current exported shell into the official repo starting point.
+
+What belongs in this phase
+commit the current index.html, style.css, and app.js
+add data/boundaries.geojson
+verify the map loads locally
+verify the boundary layer loads locally
+verify the refresh button works
+verify the debug panel updates
+verify the selected-boundary interaction works
+fix any bad text encoding artifacts like â€” and â€¦ in the UI text content visible in the export
+Done means done
+the app opens locally without console errors
+local boundaries load successfully
+clicking a boundary updates the selection panel
+no Supabase connection is required yet for the shell to feel stable
+Why this phase matters
+
+You need a trustworthy frontend baseline before layering live data on top.
+
+Phase 2 — Lock the data contract
+Goal
+
+Define exactly what the frontend expects from the pipeline.
+
+What belongs in this phase
+
+Create repo docs for:
+
+events_active_snapshot.csv
+export_confirmed_verified.csv
+manifest.json
+
+Define:
+
+canonical column names
+required join fields
+required spatial fields
+optional fallback title/date/address fields
+which file is authoritative for what purpose
+
+Your current app already assumes:
+
+join key comes from row_id, event_id, calendar_id
+export rows provide coordinates
+manifest provides updated_at
+Done means done
+you have a docs/data-contract.md
+anyone reading the repo can tell exactly what each file must contain
+future script changes will not silently break the frontend
+Why this phase matters
+
+This prevents frontend drift. It is one of the highest-leverage steps in the whole project.
+
+Phase 3 — Complete the delivery pipeline
+Goal
+
+Make the data pipeline reliable from Apps Script to Supabase.
+
+What belongs in this phase
+keep Drive output as fallback
+upload both canonical CSVs to stable Supabase paths
+upload meta/manifest.json only after both CSV uploads succeed
+store Supabase secrets in Apps Script properties
+add logging and success/failure reporting
+manually test uploads
+only then add the time trigger
+
+This is already reflected in your build-order document and is still the right sequencing.
+
+Done means done
+one manual run updates both CSVs and the manifest in Supabase
+the files are readable at stable URLs
+the manifest timestamp reflects the latest successful write
+a failed upload is clearly visible and not silently ignored
+Why this phase matters
+
+This is the bridge between concept and live app.
+
+Phase 4 — Verify live frontend loading
+Goal
+
+Make the frontend reliably consume live Supabase data.
+
+What belongs in this phase
+set CONFIG.supabaseBaseUrl
+fetch manifest
+fetch both CSVs
+parse both cleanly
+log row counts
+verify join results
+surface failures clearly in the status panel
+
+Your current app.js already has almost all the scaffolding for this phase:
+
+loadRemoteData()
+fetchJson()
+fetchText()
+parseCsv()
+joinData()
+Done means done
+manifest loads
+both CSVs load
+joined rows count is credible
+unmatched rows are understandable
+the app can be refreshed and reload fresh data
+Why this phase matters
+
+This is the true first end-to-end validation phase.
+
+Phase 5 — First live operational map
+Goal
+
+Make RWK genuinely useful as a spatial viewer.
+
+What belongs in this phase
+render markers from verified export rows
+ensure markers only plot with valid coordinates
+improve popup content slightly
+fit map to marker bounds when visible rows exist
+verify that boundary selection filters visible markers correctly
+
+Your current app is already partway into this phase:
+
+markers render from _latitude and _longitude
+popup content is generated
+boundary point-in-polygon filtering is implemented
+Done means done
+the map shows real points from live data
+clicking a boundary changes visible point count
+popup data is useful enough for operational inspection
+you can trust the visible count and join count
+Why this phase matters
+
+At the end of this phase, the project stops being a shell and becomes a functioning tool.
+
+Phase 6 — Core operational filters
+Goal
+
+Introduce the first truly useful filtering model.
+
+What belongs in this phase
+
+Add a small filter set first:
+
+keyword search
+year
+organizer
+status
+clear all
+
+Then optionally:
+
+day of week
+confirmed only toggle
+simple sort mode
+
+Do not start with saved queries yet.
+
+Also in this phase:
+
+add derived fields in runtime:
+normalized date
+year
+day of week
+normalized organizer
+maybe site key groundwork
+Done means done
+the UI has a simple filter area
+filters update the visible marker set
+visible counts update live
+resetting filters returns the expected full view
+Why this phase matters
+
+This is the point where the app becomes a navigable analysis surface rather than just a plotted dataset.
+
+Phase 7 — Derived analytics and revisit logic
+Goal
+
+Make the data more intelligent.
+
+What belongs in this phase
+define site_key
+calculate visit_count
+calculate visit_rank
+validate site grouping against real examples
+add revisit filters such as:
+first visit only
+repeat visits only
+2+
+3+
+
+Your long build order already points to this as a distinct later phase, which is correct.
+
+Done means done
+repeated sites are grouped consistently
+revisit filters behave predictably
+summary metrics like unique sites and repeat sites are accurate enough to trust
+Why this phase matters
+
+This phase begins turning the app into a business/operations insight tool.
+
+Phase 8 — Saved views, origins, and route-oriented expansion
+Goal
+
+Add higher-order usability without destabilizing the core.
+
+What belongs in this phase
+
+First:
+
+save current filters to localStorage
+list saved views
+apply / rename / delete
+
+Then:
+
+add origin markers
+add warehouse/showroom dataset
+add distance bands
+add route candidate views
+Done means done
+a user can restore reusable views quickly
+origin points are visibly distinct
+route-oriented subsets can be explored
+none of this breaks the baseline map/filter flow
+Why this phase matters
+
+This is the “power user” phase. It should come only after the core viewer is stable.
+
+What to avoid while phasing
+
+A few things should stay out of the early phases:
+
+Do not split app.js yet
+
+Right now it is still small enough to manage in one file if you keep it organized.
+
+Do not add a framework
+
+The current structure is intentionally compatible with GitHub Pages and that is a strength.
+
+Do not build the advanced query UI before basic filters
+
+First prove the filter model. Then preserve it in saved views.
+
+Do not mix archival backfill work into UI stabilization
+
+Historical completeness is real work, but it should not interrupt the core frontend path.
+
+Practical “next actions” version
+
+If I were sequencing your next work sessions, I’d do this:
+
+Session 1
+
+Phase 1:
+
+commit the shell
+place the boundaries file
+fix text encoding artifacts
+test local load
+Session 2
+
+Phase 2:
+
+create docs/data-contract.md
+define CSV and manifest requirements
+confirm join assumptions
+Session 3
+
+Phase 3:
+
+complete Apps Script → Supabase upload
+verify stable object paths
+verify manifest behavior
+Session 4
+
+Phase 4:
+
+connect supabaseBaseUrl
+test frontend fetching and parsing
+inspect unmatched joins
+Session 5
+
+Phase 5:
+
+validate real marker rendering
+improve popup usefulness
+test boundary filtering thoroughly
+Session 6+
+
+Phase 6 onward:
+
+add first filters
+then derived fields
+then saved views
+then origins/routing
+My recommendation on repo additions during this phase plan
+
+Right now I would add only:
+
+data/boundaries.geojson
+docs/data-contract.md
+docs/build-plan.md
+
+That is enough structure without overengineering.
+
+Later, after Phase 6, you can decide whether to split runtime code into:
+
+data.js
+map.js
+filters.js
+ui.js
+
+But not yet.
+
+Bottom line
+
+The best phase path is:
+
+stabilize shell
+lock data contract
+finish pipeline
+verify live fetch
+verify live map
+add core filters
+add derived analytics
+add saved views / routing expansion
+
+That keeps each phase small, testable, and aligned with the architecture already visible in your updated export.

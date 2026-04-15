@@ -1,39 +1,70 @@
+# =========================
 # Environment variables
+# =========================
 .env
 .env.local
 .env.*.local
 
-# Supabase
+# Supabase local (if ever used)
 supabase/.temp
 supabase/.env
 
+# =========================
 # Node (optional future use)
+# =========================
 node_modules/
 
+# =========================
 # Logs
+# =========================
 *.log
 
-# OS / editor
+# =========================
+# OS / Editor files
+# =========================
 .DS_Store
 Thumbs.db
 .vscode/
 .idea/
 
-# Local data files (VERY IMPORTANT)
+# =========================
+# Local data / generated files
+# =========================
+
+# CSVs (never commit pipeline outputs)
 *.csv
+
+# Ignore JSON / GeoJSON by default
 *.json
 *.geojson
 
-# Allow committed boundary file only
-!/data/
-!/data/*.geojson
+# =========================
+# Allow committed project data
+# =========================
 
+# Allow data folder itself
+!data/
+
+# Allow GeoJSON inside data (your boundaries)
+!data/*.geojson
+
+# (Optional future)
+# Allow specific JSON configs if you add them later:
+# !data/*.json
+# !config/*.json
+
+# =========================
 # Snapshots / exports
+# =========================
 *_snapshot.txt
 
-# Apps Script (if used later)
+# =========================
+# Apps Script
+# =========================
 .clasp.json
 
-# Misc
+# =========================
+# Build artifacts (future-proof)
+# =========================
 dist/
 build/
