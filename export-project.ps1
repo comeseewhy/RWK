@@ -8,33 +8,31 @@ $ErrorActionPreference = "Stop"
 # RWK project export configuration
 # =========================================================
 
-# Core files you almost always want included
 $coreFiles = @(
     "index.html",
     "style.css",
-    "app.js"
+    "app.js",
+    "main.js",
+    "workspace.html",
+    "workspace.js"
 )
 
-# Add any extra individual files here later if needed
 $extraFiles = @(
-    "README.md"
-    "env.example"
-    ".gitignore"
+    "env.example",
+    ".gitignore",
     "data\origins.json"
 )
 
-# Add folder patterns here if you want to include more project files
-# Example:
-# "data\*.geojson"
-# "*.sql"
 $includePatterns = @(
-     "docs\*.md"
-)
-
-# Optional exclusions for pattern-based matches
-$excludeFiles = @(
-    $OutputFile,
-    "project_export.txt"
+    "config\*.js",
+    "data\*.js",
+    "docs\*.md",
+    "engine\*.js",
+    "map\*.js",
+    "routing\*.js",
+    "state\*.js",
+    "ui\*.js",
+    "workspace\*.js"
 )
 
 # =========================================================
@@ -45,7 +43,8 @@ function Resolve-ProjectFiles {
     param(
         [string[]]$DirectFiles,
         [string[]]$Patterns,
-        [string[]]$Exclude
+        [string]$ProjectRoot,
+        [string]$OutputFullPath
     )
 
     $resolved = New-Object System.Collections.Generic.List[string]
@@ -55,8 +54,15 @@ function Resolve-ProjectFiles {
             continue
         }
 
-        if (Test-Path -LiteralPath $file) {
-            $fullPath = (Resolve-Path -LiteralPath $file).Path
+        $candidatePath = Join-Path $ProjectRoot $file
+
+        if (Test-Path -LiteralPath $candidatePath) {
+            $fullPath = (Resolve-Path -LiteralPath $candidatePath).Path
+
+            if ($fullPath -eq $OutputFullPath) {
+                continue
+            }
+
             if (-not $resolved.Contains($fullPath)) {
                 $resolved.Add($fullPath)
             }
@@ -71,15 +77,18 @@ function Resolve-ProjectFiles {
             continue
         }
 
-        $matched = Get-ChildItem -Path $pattern -File -ErrorAction SilentlyContinue | Sort-Object FullName
+        $patternPath = Join-Path $ProjectRoot $pattern
+        $matched = Get-ChildItem -Path $patternPath -File -ErrorAction SilentlyContinue | Sort-Object FullName
 
         foreach ($item in $matched) {
-            if ($Exclude -contains $item.Name) {
+            $fullPath = $item.FullName
+
+            if ($fullPath -eq $OutputFullPath) {
                 continue
             }
 
-            if (-not $resolved.Contains($item.FullName)) {
-                $resolved.Add($item.FullName)
+            if (-not $resolved.Contains($fullPath)) {
+                $resolved.Add($fullPath)
             }
         }
     }
@@ -100,45 +109,90 @@ function Get-RelativeProjectPath {
     return [System.Uri]::UnescapeDataString($relativeUri.ToString()).Replace('/', '\')
 }
 
+function New-Utf8StreamWriter {
+    param(
+        [string]$Path
+    )
+
+    $utf8NoBom = New-Object System.Text.UTF8Encoding($false)
+    return New-Object System.IO.StreamWriter($Path, $false, $utf8NoBom)
+}
+
+function Write-ExportLine {
+    param(
+        [System.IO.StreamWriter]$Writer,
+        [string]$Text = ""
+    )
+
+    $Writer.WriteLine($Text)
+}
+
 # =========================================================
-# Build export file list
+# Resolve paths and build export list
 # =========================================================
 
 $projectRoot = (Get-Location).Path
+$outputFullPath = Join-Path $projectRoot $OutputFile
 $allRequestedFiles = @($coreFiles + $extraFiles)
 
 $filesToExport = Resolve-ProjectFiles `
     -DirectFiles $allRequestedFiles `
     -Patterns $includePatterns `
-    -Exclude $excludeFiles
+    -ProjectRoot $projectRoot `
+    -OutputFullPath $outputFullPath
 
 # =========================================================
 # Write output
 # =========================================================
 
 $timestamp = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
-$header = @(
-    "RWK Project Export"
-    "Generated: $timestamp"
-    "Project Root: $projectRoot"
-    "File Count: $($filesToExport.Count)"
-    ""
-    "============================================================"
+
+$headerLines = @(
+    "RWK Project Export",
+    "Generated: $timestamp",
+    "Project Root: $projectRoot",
+    "File Count: $($filesToExport.Count)",
+    "",
+    "============================================================",
     ""
 )
 
-Set-Content -LiteralPath $OutputFile -Value $header -Encoding UTF8
+$writer = $null
 
-foreach ($filePath in $filesToExport) {
-    $relativePath = Get-RelativeProjectPath -BasePath $projectRoot -FullPath $filePath
+try {
+    $writer = New-Utf8StreamWriter -Path $outputFullPath
 
-    Add-Content -LiteralPath $OutputFile -Value "===== $relativePath =====" -Encoding UTF8
-    Add-Content -LiteralPath $OutputFile -Value "" -Encoding UTF8
+    foreach ($line in $headerLines) {
+        Write-ExportLine -Writer $writer -Text $line
+    }
 
-    Get-Content -LiteralPath $filePath | Add-Content -LiteralPath $OutputFile -Encoding UTF8
+    foreach ($filePath in $filesToExport) {
+        $relativePath = Get-RelativeProjectPath -BasePath $projectRoot -FullPath $filePath
 
-    Add-Content -LiteralPath $OutputFile -Value "`r`n" -Encoding UTF8
+        Write-ExportLine -Writer $writer -Text "===== $relativePath ====="
+        Write-ExportLine -Writer $writer -Text ""
+
+        $content = Get-Content -LiteralPath $filePath -Raw -ErrorAction Stop
+
+        if (-not [string]::IsNullOrEmpty($content)) {
+            $writer.Write($content)
+        }
+
+        Write-ExportLine -Writer $writer -Text ""
+        Write-ExportLine -Writer $writer -Text ""
+    }
+}
+catch {
+    Write-Host "Export failed: $($_.Exception.Message)" -ForegroundColor Red
+    throw
+}
+finally {
+    if ($null -ne $writer) {
+        $writer.Flush()
+        $writer.Close()
+        $writer.Dispose()
+    }
 }
 
-Write-Host "Export complete: $OutputFile" -ForegroundColor Green
+Write-Host "Export complete: $outputFullPath" -ForegroundColor Green
 Write-Host "Files exported: $($filesToExport.Count)" -ForegroundColor Cyan

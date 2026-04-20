@@ -1,0 +1,7 @@
+Alright! Attached is the current state of the project - see context. I've now also added "last chat.md" - this file describes the very last recommendations based on the current status of the project which you now see as context. 
+
+Please use the two design-plan.md files + the last chat.md file to discern the best intentions moving forward for optimal design planning. Remember, small steps for each conversation. I think we should focus on literally 1 phase at a time for each conversation. Not a 3 phased process, even if 3 phases are required to accomplish what is asked. Let's focus on the directive that's accomplishable in one phase, and then describe what to do once that phase is complete.
+
+---
+
+I've now attached last chat.md as a diagnostic conversation for addressing recent errors. I'd like to move forward with the best long-term structural fix. Can you help me stage how to get the project working cohesively?

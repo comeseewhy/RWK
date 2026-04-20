@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1, viewport-fit=cover"
+  />
+  <title>RWK Workspace</title>
+  <meta
+    name="description"
+    content="RWK operational workspace for compact spatial viewing and refinement."
+  />
+
+  <link
+    rel="stylesheet"
+    href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+    integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
+    crossorigin=""
+  />
+  <link rel="stylesheet" href="./style.css" />
+</head>
+<body class="workspace-page">
+  <div class="app-shell">
+    <header class="topbar">
+      <div class="topbar__title-wrap">
+        <h1 class="topbar__title">RWK Workspace</h1>
+        <p class="topbar__subtitle">Operational spatial viewer</p>
+      </div>
+
+      <div class="topbar__actions">
+        <button
+          id="backToLauncherButton"
+          class="button"
+          type="button"
+          aria-label="Back to launcher"
+        >
+          Back to launcher
+        </button>
+      </div>
+    </header>
+
+    <main class="layout">
+      <section class="map-section" aria-label="Map section">
+        <div id="map" aria-label="Map"></div>
+      </section>
+
+      <aside class="panel" aria-label="Workspace controls">
+        <section class="panel-card" aria-labelledby="filtersCardTitle">
+          <h2 id="filtersCardTitle" class="panel-card__title">Population filters</h2>
+
+          <div class="form-grid">
+            <div class="form-field">
+              <span class="form-label">Day of week</span>
+              <div
+                id="dayToggleGroup"
+                class="toggle-group"
+                aria-label="Day of week filters"
+              ></div>
+            </div>
+
+            <div class="form-field">
+              <span class="form-label">Visit count</span>
+              <div
+                id="visitToggleGroup"
+                class="toggle-group"
+                aria-label="Visit count filters"
+              ></div>
+            </div>
+          </div>
+        </section>
+
+        <section class="panel-card" aria-labelledby="originsCardTitle">
+          <h2 id="originsCardTitle" class="panel-card__title">Origins</h2>
+
+          <div class="form-grid">
+            <div class="form-field">
+              <div
+                id="originTypeToggleGroup"
+                class="toggle-group"
+                aria-label="Origin type filters"
+              ></div>
+            </div>
+          </div>
+
+          <div class="button-row">
+            <button id="clearOriginButton" class="button" type="button">
+              Clear origin
+            </button>
+          </div>
+        </section>
+
+        <section class="panel-card" aria-labelledby="resultsCardTitle">
+          <h2 id="resultsCardTitle" class="panel-card__title">Results</h2>
+
+          <dl class="stats-list">
+            <div class="stats-row">
+              <dt>Coordinate-valid rows</dt>
+              <dd id="candidateMarkerCount">0</dd>
+            </div>
+            <div class="stats-row">
+              <dt>After attribute filters</dt>
+              <dd id="filteredRowCount">0</dd>
+            </div>
+            <div class="stats-row">
+              <dt>Inside boundary</dt>
+              <dd id="boundaryMatchedCount">0</dd>
+            </div>
+            <div class="stats-row">
+              <dt>Visible markers</dt>
+              <dd id="visibleMarkerCount">0</dd>
+            </div>
+          </dl>
+
+          <p id="resultsMessage" class="panel-text panel-text--compact">
+            Waiting for workspace state.
+          </p>
+        </section>
+
+        <section class="panel-card" aria-labelledby="selectionCardTitle">
+          <h2 id="selectionCardTitle" class="panel-card__title">Selection</h2>
+
+          <dl class="stats-list">
+            <div class="stats-row">
+              <dt>Selected boundary</dt>
+              <dd id="selectedBoundaryName">None</dd>
+            </div>
+            <div class="stats-row">
+              <dt>Selected origin</dt>
+              <dd id="selectedOriginName">None</dd>
+            </div>
+          </dl>
+
+          <div class="button-row">
+            <button id="clearBoundaryButton" class="button" type="button">
+              Clear boundary
+            </button>
+          </div>
+        </section>
+
+        <section class="panel-card" aria-labelledby="debugCardTitle">
+          <h2 id="debugCardTitle" class="panel-card__title">Debug</h2>
+          <pre id="debugOutput" class="debug-output">Starting...</pre>
+        </section>
+      </aside>
+    </main>
+  </div>
+
+  <script
+    src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+    integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
+    crossorigin=""
+  ></script>
+  <script type="module" src="./workspace.js"></script>
+</body>
+</html>

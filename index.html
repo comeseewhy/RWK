@@ -6,10 +6,10 @@
     name="viewport"
     content="width=device-width, initial-scale=1, viewport-fit=cover"
   />
-  <title>RWK Spatial Viewer</title>
+  <title>RWK</title>
   <meta
     name="description"
-    content="RWK spatial viewer for operational map data, boundaries, origins, and exported job records."
+    content="RWK launcher and workspace shell for configuration-driven operational spatial analysis."
   />
 
   <link
@@ -20,240 +20,14 @@
   />
   <link rel="stylesheet" href="./style.css" />
 </head>
-<body>
-  <div class="app-shell">
-    <header class="topbar">
-      <div class="topbar__title-wrap">
-        <h1 class="topbar__title">RWK</h1>
-        <p class="topbar__subtitle">Operational spatial viewer</p>
-      </div>
-
-      <button id="refreshButton" class="button button--primary" type="button">
-        Refresh data
-      </button>
-    </header>
-
-    <main class="layout">
-      <section class="map-section" aria-label="Map section">
-        <div id="map" aria-label="Map"></div>
-      </section>
-
-      <aside class="panel" aria-label="Map controls and status">
-        <section class="panel-card" aria-labelledby="statusCardTitle">
-          <h2 id="statusCardTitle" class="panel-card__title">Status</h2>
-          <dl class="stats-list">
-            <div class="stats-row">
-              <dt>App</dt>
-              <dd id="appStatus">Booting...</dd>
-            </div>
-            <div class="stats-row">
-              <dt>Manifest</dt>
-              <dd id="manifestStatus">Pending</dd>
-            </div>
-            <div class="stats-row">
-              <dt>Boundaries</dt>
-              <dd id="boundariesStatus">Pending</dd>
-            </div>
-            <div class="stats-row">
-              <dt>Events CSV</dt>
-              <dd id="eventsStatus">Pending</dd>
-            </div>
-            <div class="stats-row">
-              <dt>Export CSV</dt>
-              <dd id="exportStatus">Pending</dd>
-            </div>
-            <div class="stats-row">
-              <dt>Joined rows</dt>
-              <dd id="joinedCount">0</dd>
-            </div>
-            <div class="stats-row">
-              <dt>Updated</dt>
-              <dd id="updatedAt">—</dd>
-            </div>
-          </dl>
-        </section>
-
-        <section class="panel-card" aria-labelledby="resultsCardTitle">
-          <h2 id="resultsCardTitle" class="panel-card__title">Results</h2>
-          <dl class="stats-list">
-            <div class="stats-row">
-              <dt>Coordinate-valid rows</dt>
-              <dd id="candidateMarkerCount">0</dd>
-            </div>
-            <div class="stats-row">
-              <dt>After attribute filters</dt>
-              <dd id="filteredRowCount">0</dd>
-            </div>
-            <div class="stats-row">
-              <dt>Inside boundary</dt>
-              <dd id="boundaryMatchedCount">0</dd>
-            </div>
-            <div class="stats-row">
-              <dt>Visible markers</dt>
-              <dd id="visibleMarkerCount">0</dd>
-            </div>
-          </dl>
-
-          <p id="resultsMessage" class="panel-text panel-text--compact">
-            No filters applied yet.
-          </p>
-        </section>
-
-        <section class="panel-card" aria-labelledby="filtersCardTitle">
-          <h2 id="filtersCardTitle" class="panel-card__title">Population filters</h2>
-
-          <div class="form-grid">
-            <div class="form-field">
-              <label class="form-label" for="keywordInput">Keyword search</label>
-              <input
-                id="keywordInput"
-                class="input-control"
-                type="text"
-                placeholder="Search title, address, organizer, notes..."
-                autocomplete="off"
-              />
-            </div>
-
-            <div class="form-field">
-              <span class="form-label">Organizer</span>
-              <div
-                id="organizerToggleGroup"
-                class="toggle-group"
-                aria-label="Organizer filters"
-              ></div>
-            </div>
-
-            <div class="form-field">
-              <span class="form-label">Day of week</span>
-              <div
-                id="dayToggleGroup"
-                class="toggle-group"
-                aria-label="Day of week filters"
-              ></div>
-            </div>
-
-            <div class="form-field">
-              <span class="form-label">Visit count</span>
-              <div
-                id="visitToggleGroup"
-                class="toggle-group"
-                aria-label="Visit count filters"
-              ></div>
-            </div>
-
-            <div class="form-field">
-              <span class="form-label">Time window</span>
-              <div
-                id="timeToggleGroup"
-                class="toggle-group"
-                aria-label="Time window filters"
-              ></div>
-            </div>
-
-            <div class="form-field">
-              <label class="form-label" for="yearFilter">Year</label>
-              <select id="yearFilter" class="input-control">
-                <option value="all">All years</option>
-              </select>
-            </div>
-          </div>
-
-          <div class="button-row">
-            <button id="clearFiltersButton" class="button" type="button">
-              Clear all filters
-            </button>
-          </div>
-        </section>
-
-        <section class="panel-card" aria-labelledby="originsCardTitle">
-          <h2 id="originsCardTitle" class="panel-card__title">Origins</h2>
-
-          <div class="form-grid">
-            <div class="form-field">
-              <span class="form-label">Origin type</span>
-              <div
-                id="originTypeToggleGroup"
-                class="toggle-group"
-                aria-label="Origin type filters"
-              ></div>
-            </div>
-
-            <div class="form-field">
-              <span class="form-label">Selected origin</span>
-              <div
-                id="selectedOriginDisplay"
-                class="selection-pill selection-pill--empty"
-                data-origin-type=""
-              >
-                None
-              </div>
-            </div>
-          </div>
-
-          <div class="button-row">
-            <button id="clearOriginButton" class="button" type="button">
-              Clear origin
-            </button>
-          </div>
-        </section>
-
-        <section class="panel-card" aria-labelledby="selectionCardTitle">
-          <h2 id="selectionCardTitle" class="panel-card__title">Selection</h2>
-          <dl class="stats-list">
-            <div class="stats-row">
-              <dt>Selected boundary</dt>
-              <dd id="selectedBoundaryName">None</dd>
-            </div>
-            <div class="stats-row">
-              <dt>Selected origin</dt>
-              <dd id="selectedOriginName">None</dd>
-            </div>
-            <div class="stats-row">
-              <dt>Origin type</dt>
-              <dd id="selectedOriginType">—</dd>
-            </div>
-            <div class="stats-row">
-              <dt>Boundary features</dt>
-              <dd id="boundaryFeatureCount">0</dd>
-            </div>
-          </dl>
-
-          <div class="button-row">
-            <button id="clearBoundaryButton" class="button" type="button">
-              Clear boundary
-            </button>
-            <button id="clearSelectionButton" class="button" type="button">
-              Clear all selection
-            </button>
-          </div>
-        </section>
-
-        <section class="panel-card" aria-labelledby="notesCardTitle">
-          <h2 id="notesCardTitle" class="panel-card__title">Data notes</h2>
-          <p class="panel-text">
-            This pass introduces origin locations as a second dataset class,
-            kept separate from job rows and rendered independently on the map.
-          </p>
-          <p class="panel-text">
-            Nearest-origin fields are derived during load so later distance
-            filtering, route-oriented sorting, and report exports can build on
-            the same runtime model.
-          </p>
-        </section>
-
-        <section class="panel-card" aria-labelledby="debugCardTitle">
-          <h2 id="debugCardTitle" class="panel-card__title">Debug</h2>
-          <pre id="debugOutput" class="debug-output">Starting...</pre>
-        </section>
-      </aside>
-    </main>
-  </div>
+<body class="app-page">
+  <div id="rwk-app-root"></div>
 
   <script
     src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
     integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
     crossorigin=""
   ></script>
-  <script src="./app.js"></script>
+  <script type="module" src="./main.js"></script>
 </body>
 </html>

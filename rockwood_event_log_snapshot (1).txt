@@ -1,0 +1,6647 @@
+========================================================================
+GOOGLE APPS SCRIPT SOURCE SNAPSHOT
+========================================================================
+Project: Apps Script Project (America/Toronto)
+Script ID: 12G2wsua85IWPO3JuJaLSetIzRP8ga6kewqYw0cwlcrCJyajgzIKS1E5N
+Exported: 2026-04-07 10:46:42
+Included files: 11
+
+########################################################################
+FILE: ClearLock.gs
+########################################################################
+
+/**
+ * ClearLock.gs
+ *
+ * Purpose:
+ * Manually clears the spreadsheet execution lock when a previous run was
+ * interrupted, failed unexpectedly, or left the workbook in a blocked state.
+ *
+ * Design:
+ * - validates the required workbook structure
+ * - reads current lock-related config values
+ * - clears Config.execution_lock
+ * - resets system_status back to READY
+ * - writes a plain-English result into Config and Log
+ * - gives the user a clear advisory message about what to do next
+ *
+ * Depends on:
+ * - Helpers.gs
+ *   - APP
+ *   - getConfig()
+ *   - setConfigValues()
+ *   - logAction()
+ *   - validateRequiredTabs()
+ *   - validateRequiredConfigKeys()
+ *   - safeString()
+ *   - toBoolean()
+ */
+
+
+/* ============================================================================
+ * PUBLIC BUTTON FUNCTION
+ * ========================================================================== */
+
+/**
+ * Button action:
+ * Clears the execution lock manually.
+ *
+ * Use this only when the workbook is stuck in a locked state and no other run
+ * is actively in progress.
+ */
+function clearLock() {
+  validateRequiredTabs();
+  validateRequiredConfigKeys();
+
+  const config = getConfig();
+  const result = evaluateClearLockState_(config);
+
+  applyClearLockResult_(result);
+
+  logAction({
+    action: 'clear_lock',
+    status: result.logStatus,
+    detail: result.logMessage
+  });
+
+  SpreadsheetApp.getUi().alert(result.alertMessage);
+}
+
+
+/* ============================================================================
+ * EVALUATION
+ * ========================================================================== */
+
+/**
+ * Evaluates the current lock state and prepares the user-facing result.
+ *
+ * @param {Object} config
+ * @returns {{
+ *   wasLocked: boolean,
+ *   logStatus: string,
+ *   summary: string,
+ *   logMessage: string,
+ *   alertMessage: string,
+ *   updates: Object
+ * }}
+ */
+function evaluateClearLockState_(config) {
+  const wasLocked = toBoolean(config.execution_lock);
+  const currentSystemStatus = safeString(config.system_status).trim();
+  const lastRunStatus = safeString(config.last_run_status).trim();
+  const lastError = safeString(config.last_error).trim();
+
+  if (wasLocked) {
+    const summary = buildClearLockSummary_({
+      cleared: true,
+      previousSystemStatus: currentSystemStatus,
+      previousRunStatus: lastRunStatus
+    });
+
+    const logMessage = [
+      'Execution lock was cleared manually.',
+      currentSystemStatus
+        ? 'Previous system_status=' + currentSystemStatus + '.'
+        : 'Previous system_status was blank.',
+      lastRunStatus
+        ? 'Previous last_run_status=' + lastRunStatus + '.'
+        : 'Previous last_run_status was blank.',
+      lastError
+        ? 'Most recent error before unlock: ' + lastError + '.'
+        : 'No last_error value was present.',
+      'Next step: review the last run result, then retry the appropriate button when ready.'
+    ].join(' ');
+
+    const alertMessage = [
+      'Clear Lock complete.',
+      '',
+      'What changed:',
+      '- Config.execution_lock was set to FALSE.',
+      '- Config.system_status was reset to READY.',
+      '',
+      'Why this is useful:',
+      'Use Clear Lock when a prior run was interrupted and left the workbook blocked.',
+      '',
+      'What to do next:',
+      '1. Review Config.last_run_summary and Config.last_error.',
+      '2. Confirm no other run is actually in progress.',
+      '3. Retry the button you intended to run.'
+    ].join('\n');
+
+    return {
+      wasLocked: true,
+      logStatus: APP.LOG_STATUS.SUCCESS,
+      summary: summary,
+      logMessage: logMessage,
+      alertMessage: alertMessage,
+      updates: {
+        execution_lock: false,
+        system_status: APP.STATUS.READY,
+        last_run_status: 'Success',
+        last_run_summary: summary
+      }
+    };
+  }
+
+  const summary = buildClearLockSummary_({
+    cleared: false,
+    previousSystemStatus: currentSystemStatus,
+    previousRunStatus: lastRunStatus
+  });
+
+  const logMessage = [
+    'Clear Lock was run, but execution_lock was already FALSE.',
+    currentSystemStatus
+      ? 'Current system_status=' + currentSystemStatus + '.'
+      : 'Current system_status was blank.',
+    'No lock reset was required.'
+  ].join(' ');
+
+  const alertMessage = [
+    'Clear Lock checked the workbook.',
+    '',
+    'No action was needed because execution_lock is already FALSE.',
+    '',
+    'What to do next:',
+    '1. Review Config.last_run_summary if something still looks wrong.',
+    '2. Run your next backup or restore step normally.'
+  ].join('\n');
+
+  return {
+    wasLocked: false,
+    logStatus: APP.LOG_STATUS.INFO,
+    summary: summary,
+    logMessage: logMessage,
+    alertMessage: alertMessage,
+    updates: {
+      execution_lock: false,
+      system_status: APP.STATUS.READY,
+      last_run_status: 'Success',
+      last_run_summary: summary
+    }
+  };
+}
+
+
+/* ============================================================================
+ * WRITEBACK
+ * ========================================================================== */
+
+/**
+ * Applies the clear-lock result to Config.
+ *
+ * @param {{
+ *   updates: Object
+ * }} result
+ */
+function applyClearLockResult_(result) {
+  setConfigValues(result.updates);
+}
+
+
+/* ============================================================================
+ * SUMMARY
+ * ========================================================================== */
+
+/**
+ * Builds the plain-English summary written into Config.last_run_summary.
+ *
+ * @param {{
+ *   cleared: boolean,
+ *   previousSystemStatus: string,
+ *   previousRunStatus: string
+ * }} options
+ * @returns {string}
+ */
+function buildClearLockSummary_(options) {
+  const parts = [
+    options.cleared ? 'Clear Lock complete' : 'Clear Lock check complete',
+    'execution_lock=FALSE',
+    'system_status=READY'
+  ];
+
+  if (options.previousSystemStatus) {
+    parts.push('previous_system_status=' + options.previousSystemStatus);
+  }
+
+  if (options.previousRunStatus) {
+    parts.push('previous_last_run_status=' + options.previousRunStatus);
+  }
+
+  parts.push(options.cleared ? 'lock_was_cleared=TRUE' : 'lock_was_cleared=FALSE');
+
+  return parts.join(' | ');
+}
+
+
+########################################################################
+FILE: DryRunRestore.gs
+########################################################################
+
+/**
+ * DryRunRestore.gs
+ *
+ * Purpose:
+ * Validates one staged restore request from the Restore tab without creating
+ * any event in Google Calendar.
+ *
+ * Design:
+ * - reads a staged restore row from the Restore tab
+ * - prefers the row that matches Config.selected_row_id or Config.selected_event_id
+ * - falls back to the most recent prepared or blocked restore row when selection is not set
+ * - validates payload structure, dates, target calendar access, and attendees
+ * - writes dry-run results back into Restore, Config, and Log
+ * - provides guided advisory responses when no staged restore row is available
+ * - provides user-friendly popup summaries describing what was checked, why it
+ *   passed or failed, and what to do next
+ *
+ * Depends on:
+ * - Helpers.gs
+ *   - APP
+ *   - getProjectSheets()
+ *   - setConfigValues()
+ *   - logAction()
+ *   - runWithContext_()
+ *   - safeString()
+ *   - toBoolean()
+ *   - formatTimestamp()
+ *   - validateRequiredTabs()
+ *   - validateRequiredConfigKeys()
+ *
+ * Recommended prerequisite:
+ * - Enable Advanced Google Services > Calendar API
+ * - Enable Google Calendar API in the linked Cloud project
+ */
+
+
+/* ============================================================================
+ * PUBLIC BUTTON FUNCTION
+ * ========================================================================== */
+
+/**
+ * Button action:
+ * Validate a staged restore row without creating a calendar event.
+ */
+function dryRunRestore() {
+  runWithContext_('dry_run_restore', function (runId, config) {
+    validateRequiredTabs();
+    validateRequiredConfigKeys();
+
+    const sheets = getProjectSheets();
+    dryRunValidatePrerequisites_(sheets.restore, config);
+
+    const restoreRecord = resolveDryRunRestoreRecord_(sheets.restore, config);
+
+    if (!restoreRecord) {
+      handleMissingDryRunRestoreRecord_(runId, config);
+      return;
+    }
+
+    const evaluation = evaluateDryRunRestoreRecord_(restoreRecord, config);
+    applyDryRunRestoreResult_(sheets.restore, restoreRecord.sheetRowNumber, evaluation);
+
+    const summary = buildDryRunRestoreSummary_(restoreRecord, evaluation);
+    const uiMessage = buildDryRunRestoreAlertMessage_(restoreRecord, evaluation, config);
+
+    setConfigValues({
+      last_run_status: evaluation.isValid ? 'Success' : 'Action Needed',
+      last_run_summary: summary,
+      last_error: evaluation.isValid ? '' : evaluation.errors.join(' | '),
+      system_status: APP.STATUS.READY,
+      dry_run_restore: true
+    });
+
+    logAction({
+      action: 'dry_run_restore',
+      status: evaluation.isValid ? APP.LOG_STATUS.SUCCESS : APP.LOG_STATUS.WARNING,
+      detail: summary,
+      runId: runId,
+      eventId: restoreRecord.row.source_event_id,
+      restoreId: restoreRecord.row.restore_id
+    });
+
+    evaluation.warnings.forEach(function (warning) {
+      logAction({
+        action: 'dry_run_restore',
+        status: APP.LOG_STATUS.WARNING,
+        detail: warning,
+        runId: runId,
+        eventId: restoreRecord.row.source_event_id,
+        restoreId: restoreRecord.row.restore_id
+      });
+    });
+
+    SpreadsheetApp.getUi().alert(uiMessage);
+  });
+}
+
+
+/* ============================================================================
+ * PRECHECKS
+ * ========================================================================== */
+
+/**
+ * Validates that dry run restore has what it needs before reading data.
+ *
+ * @param {GoogleAppsScript.Spreadsheet.Sheet} restoreSheet
+ * @param {Object} config
+ */
+function dryRunValidatePrerequisites_(restoreSheet, config) {
+  if (typeof Calendar === 'undefined' || !Calendar.Calendars || !Calendar.Calendars.get) {
+    throw new Error(
+      'Advanced Calendar service is not enabled. Enable the Calendar API in Apps Script advanced services before running dry run restore.'
+    );
+  }
+
+  if (!config.target_calendar_id) {
+    throw new Error('Config.target_calendar_id is required for dry run restore.');
+  }
+
+  dryRunValidateRestoreHeaders_(restoreSheet);
+}
+
+/**
+ * Ensures the Restore tab matches the expected structure.
+ *
+ * @param {GoogleAppsScript.Spreadsheet.Sheet} sheet
+ */
+function dryRunValidateRestoreHeaders_(sheet) {
+  const expectedHeaders = [
+    'restore_id',
+    'source_row_id',
+    'source_event_id',
+    'target_calendar_id',
+    'restore_mode',
+    'title',
+    'description',
+    'location',
+    'start_time',
+    'end_time',
+    'all_day',
+    'attendees',
+    'validation_status',
+    'execution_status',
+    'restored_event_id',
+    'executed_at',
+    'notes'
+  ];
+
+  const actualHeaders = sheet
+    .getRange(1, 1, 1, expectedHeaders.length)
+    .getValues()[0]
+    .map(function (value) {
+      return String(value || '').trim();
+    });
+
+  const mismatches = [];
+
+  expectedHeaders.forEach(function (header, index) {
+    if (actualHeaders[index] !== header) {
+      mismatches.push(
+        'column ' + (index + 1) + ': expected "' + header + '" but found "' + actualHeaders[index] + '"'
+      );
+    }
+  });
+
+  if (mismatches.length > 0) {
+    throw new Error(
+      'Restore tab headers are invalid for dry run restore. ' + mismatches.join('; ')
+    );
+  }
+}
+
+
+/* ============================================================================
+ * ADVISORY FLOW
+ * ========================================================================== */
+
+/**
+ * Handles the case where there is no prepared restore row to dry-run.
+ *
+ * @param {string} runId
+ * @param {Object} config
+ */
+function handleMissingDryRunRestoreRecord_(runId, config) {
+  const guidance = buildMissingDryRunRestoreMessage_(config);
+
+  setConfigValues({
+    last_run_status: 'Action Needed',
+    last_run_summary: 'Dry run restore is waiting for a staged restore row.',
+    last_error: guidance.shortMessage,
+    system_status: APP.STATUS.READY
+  });
+
+  logAction({
+    action: 'dry_run_restore',
+    status: APP.LOG_STATUS.WARNING,
+    detail: guidance.logMessage,
+    runId: runId
+  });
+
+  SpreadsheetApp.getUi().alert(guidance.alertMessage);
+}
+
+/**
+ * Builds the advisory message when no dry-run candidate exists.
+ *
+ * @param {Object} config
+ * @returns {{shortMessage:string, logMessage:string, alertMessage:string}}
+ */
+function buildMissingDryRunRestoreMessage_(config) {
+  const selectedRowId = safeString(config.selected_row_id).trim();
+  const selectedEventId = safeString(config.selected_event_id).trim();
+
+  const shortMessage =
+    'No staged restore row found. Run Prepare Restore first, then run Dry Run Restore.';
+
+  const logMessage = [
+    'Dry run restore did not run because no staged restore row was found in the Restore tab.',
+    selectedRowId
+      ? 'Current selected_row_id=' + selectedRowId + '.'
+      : 'Config.selected_row_id is blank.',
+    selectedEventId
+      ? 'Current selected_event_id=' + selectedEventId + '.'
+      : 'Config.selected_event_id is blank.',
+    'Next step: run Prepare Restore so a Restore row exists for this source event.'
+  ].join(' ');
+
+  const alertMessage = [
+    'Dry Run Restore could not start.',
+    '',
+    'Why it stopped:',
+    '- No matching staged restore row was found in the Restore tab.',
+    '',
+    'What to do:',
+    '1. Go to the Config tab.',
+    '2. Make sure the correct event is selected using selected_row_id or selected_event_id.',
+    '3. Run Prepare Restore.',
+    '4. Confirm that a row appears in the Restore tab for that source event.',
+    '5. Run Dry Run Restore again.',
+    '',
+    'Recommended:',
+    'Use selected_row_id whenever possible so the dry run resolves one exact restore request.'
+  ].join('\n');
+
+  return {
+    shortMessage: shortMessage,
+    logMessage: logMessage,
+    alertMessage: alertMessage
+  };
+}
+
+
+/* ============================================================================
+ * RECORD RESOLUTION
+ * ========================================================================== */
+
+/**
+ * Resolves the restore row to validate.
+ *
+ * Priority:
+ * 1. Latest restore row matching Config.selected_row_id
+ * 2. Latest restore row matching Config.selected_event_id
+ * 3. Latest restore row with execution_status "prepared" or "blocked"
+ *
+ * @param {GoogleAppsScript.Spreadsheet.Sheet} restoreSheet
+ * @param {Object} config
+ * @returns {{sheetRowNumber:number, row:Object}|null}
+ */
+function resolveDryRunRestoreRecord_(restoreSheet, config) {
+  const data = readDryRunRestoreSheet_(restoreSheet);
+  const selectedRowId = safeString(config.selected_row_id).trim();
+  const selectedEventId = safeString(config.selected_event_id).trim();
+
+  if (data.records.length === 0) {
+    return null;
+  }
+
+  if (selectedRowId) {
+    const byRowId = data.records.filter(function (record) {
+      return safeString(record.row.source_row_id) === selectedRowId;
+    });
+
+    if (byRowId.length > 0) {
+      return byRowId[byRowId.length - 1];
+    }
+  }
+
+  if (selectedEventId) {
+    const byEventId = data.records.filter(function (record) {
+      return safeString(record.row.source_event_id) === selectedEventId;
+    });
+
+    if (byEventId.length > 0) {
+      return byEventId[byEventId.length - 1];
+    }
+  }
+
+  const prepared = data.records.filter(function (record) {
+    const status = safeString(record.row.execution_status).toLowerCase();
+    return status === 'prepared' || status === 'blocked';
+  });
+
+  if (prepared.length > 0) {
+    return prepared[prepared.length - 1];
+  }
+
+  return null;
+}
+
+/**
+ * Reads the Restore sheet into structured records.
+ *
+ * @param {GoogleAppsScript.Spreadsheet.Sheet} sheet
+ * @returns {{records:Array}}
+ */
+function readDryRunRestoreSheet_(sheet) {
+  const lastRow = sheet.getLastRow();
+  const lastColumn = sheet.getLastColumn();
+
+  if (lastRow < 2) {
+    return { records: [] };
+  }
+
+  const headers = sheet.getRange(1, 1, 1, lastColumn).getValues()[0];
+  const rows = sheet.getRange(2, 1, lastRow - 1, lastColumn).getValues();
+  const colMap = buildDryRunRestoreColumnMap_(headers);
+
+  const records = rows.map(function (rowValues, index) {
+    return {
+      sheetRowNumber: index + 2,
+      row: mapDryRunRestoreArrayToObject_(rowValues, colMap)
+    };
+  });
+
+  return { records: records };
+}
+
+/**
+ * Maps a Restore row array into an object keyed by header names.
+ *
+ * @param {Array} rowValues
+ * @param {Object} colMap
+ * @returns {Object}
+ */
+function mapDryRunRestoreArrayToObject_(rowValues, colMap) {
+  return {
+    restore_id: safeString(rowValues[colMap.restore_id]),
+    source_row_id: safeString(rowValues[colMap.source_row_id]),
+    source_event_id: safeString(rowValues[colMap.source_event_id]),
+    target_calendar_id: safeString(rowValues[colMap.target_calendar_id]),
+    restore_mode: safeString(rowValues[colMap.restore_mode]),
+    title: safeString(rowValues[colMap.title]),
+    description: safeString(rowValues[colMap.description]),
+    location: safeString(rowValues[colMap.location]),
+    start_time: dryRunNormalizeCellValue_(rowValues[colMap.start_time]),
+    end_time: dryRunNormalizeCellValue_(rowValues[colMap.end_time]),
+    all_day: dryRunNormalizeBoolean_(rowValues[colMap.all_day]),
+    attendees: safeString(rowValues[colMap.attendees]),
+    validation_status: safeString(rowValues[colMap.validation_status]),
+    execution_status: safeString(rowValues[colMap.execution_status]),
+    restored_event_id: safeString(rowValues[colMap.restored_event_id]),
+    executed_at: dryRunNormalizeCellValue_(rowValues[colMap.executed_at]),
+    notes: safeString(rowValues[colMap.notes])
+  };
+}
+
+
+/* ============================================================================
+ * EVALUATION
+ * ========================================================================== */
+
+/**
+ * Evaluates a staged restore row without creating an event.
+ *
+ * @param {{sheetRowNumber:number, row:Object}} restoreRecord
+ * @param {Object} config
+ * @returns {Object}
+ */
+function evaluateDryRunRestoreRecord_(restoreRecord, config) {
+  const row = restoreRecord.row;
+  const errors = [];
+  const warnings = [];
+  const parsedAttendees = dryRunParseAttendees_(row.attendees);
+
+  if (!row.restore_id) {
+    errors.push('Restore row is missing restore_id.');
+  }
+
+  if (!row.source_row_id) {
+    warnings.push('Restore row is missing source_row_id.');
+  }
+
+  if (!row.source_event_id) {
+    warnings.push('Restore row is missing source_event_id.');
+  }
+
+  if (!row.target_calendar_id) {
+    errors.push('Restore row is missing target_calendar_id.');
+  }
+
+  if (safeString(row.target_calendar_id) !== safeString(config.target_calendar_id)) {
+    warnings.push('Restore row target_calendar_id does not match Config.target_calendar_id.');
+  }
+
+  if (!row.title) {
+    warnings.push('Restore title is blank.');
+  }
+
+  if (!row.start_time) {
+    errors.push('Restore start_time is required.');
+  }
+
+  if (!row.end_time) {
+    errors.push('Restore end_time is required.');
+  }
+
+  const startInfo = dryRunParseStoredDateValue_(row.start_time, row.all_day, 'start_time');
+  const endInfo = dryRunParseStoredDateValue_(row.end_time, row.all_day, 'end_time');
+
+  if (!startInfo.isValid) {
+    errors.push(startInfo.message);
+  }
+
+  if (!endInfo.isValid) {
+    errors.push(endInfo.message);
+  }
+
+  if (startInfo.isValid && endInfo.isValid) {
+    if (endInfo.date.getTime() <= startInfo.date.getTime()) {
+      errors.push('Restore end_time must be later than start_time.');
+    }
+  }
+
+  if (row.all_day === true) {
+    if (!dryRunIsDateOnlyString_(row.start_time)) {
+      errors.push('All-day restore rows must use YYYY-MM-DD format for start_time.');
+    }
+    if (!dryRunIsDateOnlyString_(row.end_time)) {
+      errors.push('All-day restore rows must use YYYY-MM-DD format for end_time.');
+    }
+  }
+
+  if (parsedAttendees.invalidTokens.length > 0) {
+    warnings.push(
+      'Some attendees could not be parsed and would be omitted: ' + parsedAttendees.invalidTokens.join(' | ')
+    );
+  }
+
+  const calendarCheck = dryRunValidateTargetCalendarAccess_(row.target_calendar_id || config.target_calendar_id);
+  if (!calendarCheck.isValid) {
+    errors.push(calendarCheck.message);
+  }
+
+  const payload = buildDryRunCalendarPayload_(row, parsedAttendees.validEmails);
+  const notes = buildDryRunRestoreNotes_(errors, warnings, payload);
+
+  return {
+    isValid: errors.length === 0,
+    errors: errors,
+    warnings: warnings,
+    payload: payload,
+    parsedAttendeeCount: parsedAttendees.validEmails.length,
+    invalidAttendeeCount: parsedAttendees.invalidTokens.length,
+    validationStatus: errors.length === 0 ? 'valid' : 'invalid',
+    executionStatus: errors.length === 0 ? 'dry_run_passed' : 'dry_run_failed',
+    notes: notes
+  };
+}
+
+/**
+ * Validates target calendar access.
+ *
+ * @param {string} calendarId
+ * @returns {{isValid:boolean, message:string}}
+ */
+function dryRunValidateTargetCalendarAccess_(calendarId) {
+  const normalizedId = safeString(calendarId).trim();
+
+  if (!normalizedId) {
+    return {
+      isValid: false,
+      message: 'No target calendar id was provided for dry run restore.'
+    };
+  }
+
+  try {
+    Calendar.Calendars.get(normalizedId);
+    return {
+      isValid: true,
+      message: ''
+    };
+  } catch (error) {
+    return {
+      isValid: false,
+      message: 'Target calendar could not be accessed: ' + error.message
+    };
+  }
+}
+
+/**
+ * Builds the payload that executeRestore() would later use.
+ *
+ * @param {Object} row
+ * @param {string[]} attendeeEmails
+ * @returns {Object}
+ */
+function buildDryRunCalendarPayload_(row, attendeeEmails) {
+  const payload = {
+    summary: row.title || '',
+    description: row.description || '',
+    location: row.location || ''
+  };
+
+  if (row.all_day === true) {
+    payload.start = { date: safeString(row.start_time) };
+    payload.end = { date: safeString(row.end_time) };
+  } else {
+    payload.start = { dateTime: dryRunToIsoString_(row.start_time) };
+    payload.end = { dateTime: dryRunToIsoString_(row.end_time) };
+  }
+
+  if (attendeeEmails.length > 0) {
+    payload.attendees = attendeeEmails.map(function (email) {
+      return { email: email };
+    });
+  }
+
+  return payload;
+}
+
+
+/* ============================================================================
+ * SHEET WRITEBACK
+ * ========================================================================== */
+
+/**
+ * Writes the dry-run result back into the Restore row.
+ *
+ * @param {GoogleAppsScript.Spreadsheet.Sheet} restoreSheet
+ * @param {number} sheetRowNumber
+ * @param {Object} evaluation
+ */
+function applyDryRunRestoreResult_(restoreSheet, sheetRowNumber, evaluation) {
+  const headers = restoreSheet.getRange(1, 1, 1, restoreSheet.getLastColumn()).getValues()[0];
+  const colMap = buildDryRunRestoreColumnMap_(headers);
+
+  restoreSheet.getRange(sheetRowNumber, colMap.restore_mode + 1).setValue('dry_run');
+  restoreSheet.getRange(sheetRowNumber, colMap.validation_status + 1).setValue(evaluation.validationStatus);
+  restoreSheet.getRange(sheetRowNumber, colMap.execution_status + 1).setValue(evaluation.executionStatus);
+  restoreSheet.getRange(sheetRowNumber, colMap.notes + 1).setValue(evaluation.notes);
+}
+
+
+/* ============================================================================
+ * SUMMARY / USER MESSAGING
+ * ========================================================================== */
+
+/**
+ * Builds the summary written to Config and Log.
+ *
+ * @param {{sheetRowNumber:number, row:Object}} restoreRecord
+ * @param {Object} evaluation
+ * @returns {string}
+ */
+function buildDryRunRestoreSummary_(restoreRecord, evaluation) {
+  const parts = [
+    evaluation.isValid ? 'Dry run restore passed' : 'Dry run restore found issues',
+    'restore_id=' + restoreRecord.row.restore_id,
+    'source_row_id=' + restoreRecord.row.source_row_id,
+    'source_event_id=' + restoreRecord.row.source_event_id,
+    'validation_status=' + evaluation.validationStatus,
+    'execution_status=' + evaluation.executionStatus,
+    'parsed_attendees=' + evaluation.parsedAttendeeCount
+  ];
+
+  if (evaluation.invalidAttendeeCount > 0) {
+    parts.push('invalid_attendees=' + evaluation.invalidAttendeeCount);
+  }
+
+  if (evaluation.errors.length > 0) {
+    parts.push('errors=' + evaluation.errors.length);
+  }
+
+  if (evaluation.warnings.length > 0) {
+    parts.push('warnings=' + evaluation.warnings.length);
+  }
+
+  return parts.join(' | ');
+}
+
+/**
+ * Builds a clearer user-facing popup message for dry run restore.
+ *
+ * @param {{sheetRowNumber:number, row:Object}} restoreRecord
+ * @param {Object} evaluation
+ * @param {Object} config
+ * @returns {string}
+ */
+function buildDryRunRestoreAlertMessage_(restoreRecord, evaluation, config) {
+  const row = restoreRecord.row;
+  const lines = [];
+
+  if (evaluation.isValid) {
+    lines.push('Dry Run Restore completed successfully.');
+    lines.push('');
+    lines.push('What was checked:');
+    lines.push('- The staged Restore row was found and evaluated.');
+    lines.push('- Dates and event structure were validated.');
+    lines.push('- Target calendar access was confirmed.');
+    lines.push('- Attendees were parsed into the event payload preview.');
+    lines.push('');
+    lines.push('Validated row:');
+    lines.push('- restore_id: ' + (row.restore_id || '(blank)'));
+    lines.push('- source_row_id: ' + (row.source_row_id || '(blank)'));
+    lines.push('- source_event_id: ' + (row.source_event_id || '(blank)'));
+    lines.push('- target_calendar_id: ' + (row.target_calendar_id || '(blank)'));
+    lines.push('- restore_mode: dry_run');
+    lines.push('- validation_status: ' + evaluation.validationStatus);
+    lines.push('- execution_status: ' + evaluation.executionStatus);
+    lines.push('- parsed_attendees: ' + evaluation.parsedAttendeeCount);
+
+    if (evaluation.invalidAttendeeCount > 0) {
+      lines.push('- invalid_attendees: ' + evaluation.invalidAttendeeCount);
+    }
+
+    if (evaluation.warnings.length > 0) {
+      lines.push('');
+      lines.push('Warnings to review:');
+      evaluation.warnings.forEach(function (warning) {
+        lines.push('- ' + warning);
+      });
+    }
+
+    lines.push('');
+    lines.push('What this means:');
+    lines.push('- The restore row passed dry-run validation.');
+    lines.push('- No calendar event was created yet.');
+    lines.push('- Execute Restore is the step that would actually recreate the event.');
+
+    lines.push('');
+    lines.push('Next step:');
+    lines.push('- Review the Restore row and warnings, then run Execute Restore when ready.');
+
+    return lines.join('\n');
+  }
+
+  lines.push('Dry Run Restore found blocking issues.');
+  lines.push('');
+  lines.push('What was checked:');
+  lines.push('- The staged Restore row was loaded from the Restore tab.');
+  lines.push('- Dates, calendar access, and attendee parsing were evaluated.');
+  lines.push('');
+  lines.push('Evaluated row:');
+  lines.push('- restore_id: ' + (row.restore_id || '(blank)'));
+  lines.push('- source_row_id: ' + (row.source_row_id || '(blank)'));
+  lines.push('- source_event_id: ' + (row.source_event_id || '(blank)'));
+  lines.push('- target_calendar_id: ' + (row.target_calendar_id || '(blank)'));
+  lines.push('- Config.target_calendar_id: ' + (safeString(config.target_calendar_id).trim() || '(blank)'));
+  lines.push('- all_day: ' + String(row.all_day));
+  lines.push('- restore_mode: dry_run');
+  lines.push('');
+  lines.push('Why it cannot proceed:');
+
+  evaluation.errors.forEach(function (error) {
+    lines.push('- ' + error);
+  });
+
+  if (evaluation.warnings.length > 0) {
+    lines.push('');
+    lines.push('Warnings:');
+    evaluation.warnings.forEach(function (warning) {
+      lines.push('- ' + warning);
+    });
+  }
+
+  lines.push('');
+  lines.push('What to do next:');
+
+  if (!row.start_time || !row.end_time) {
+    lines.push('- Make sure the Restore row contains both start_time and end_time.');
+  }
+
+  if (row.all_day === true) {
+    lines.push('- For all-day events, use YYYY-MM-DD format for both start_time and end_time.');
+  }
+
+  if (safeString(row.target_calendar_id).trim() !== safeString(config.target_calendar_id).trim()) {
+    lines.push('- Make sure the Restore row target_calendar_id matches Config.target_calendar_id, unless the mismatch is intentional.');
+  }
+
+  lines.push('- Review the Restore row notes field for the payload preview and validation results.');
+  lines.push('- Correct the staged Restore row or rerun Prepare Restore from the correct source row.');
+  lines.push('- Run Dry Run Restore again after the row has been corrected.');
+  lines.push('- Only run Execute Restore after dry_run_passed.');
+
+  return lines.join('\n');
+}
+
+
+/* ============================================================================
+ * LOW-LEVEL HELPERS
+ * ========================================================================== */
+
+/**
+ * Builds a header-name -> column-index map.
+ *
+ * @param {Array} headers
+ * @returns {Object}
+ */
+function buildDryRunRestoreColumnMap_(headers) {
+  const map = {};
+
+  headers.forEach(function (header, index) {
+    map[String(header || '').trim()] = index;
+  });
+
+  return map;
+}
+
+/**
+ * Normalizes cell values for object mapping.
+ *
+ * @param {*} value
+ * @returns {*}
+ */
+function dryRunNormalizeCellValue_(value) {
+  if (value === null || value === undefined || value === '') {
+    return '';
+  }
+
+  if (value instanceof Date) {
+    return formatTimestamp(value);
+  }
+
+  return value;
+}
+
+/**
+ * Normalizes boolean-like values from the sheet.
+ *
+ * @param {*} value
+ * @returns {boolean}
+ */
+function dryRunNormalizeBoolean_(value) {
+  return toBoolean(value);
+}
+
+/**
+ * Parses the attendee text cell.
+ *
+ * Accepted input examples:
+ * - name <email@example.com> | another@example.com
+ * - email@example.com | second@example.com
+ *
+ * @param {string} attendeesText
+ * @returns {{validEmails:string[], invalidTokens:string[]}}
+ */
+function dryRunParseAttendees_(attendeesText) {
+  const raw = safeString(attendeesText).trim();
+
+  if (!raw) {
+    return {
+      validEmails: [],
+      invalidTokens: []
+    };
+  }
+
+  const emailRegex = /<?([A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,})>?/i;
+  const tokens = raw.split('|').map(function (token) {
+    return token.trim();
+  }).filter(Boolean);
+
+  const validEmails = [];
+  const invalidTokens = [];
+
+  tokens.forEach(function (token) {
+    const match = token.match(emailRegex);
+
+    if (match && match[1]) {
+      validEmails.push(match[1]);
+    } else {
+      invalidTokens.push(token);
+    }
+  });
+
+  return {
+    validEmails: validEmails,
+    invalidTokens: invalidTokens
+  };
+}
+
+/**
+ * Parses a stored date value according to all-day or timed rules.
+ *
+ * @param {*} value
+ * @param {boolean} allDay
+ * @param {string} label
+ * @returns {{isValid:boolean, date:Date|null, message:string}}
+ */
+function dryRunParseStoredDateValue_(value, allDay, label) {
+  const raw = safeString(value).trim();
+
+  if (!raw) {
+    return {
+      isValid: false,
+      date: null,
+      message: 'Restore ' + label + ' is blank.'
+    };
+  }
+
+  if (allDay === true) {
+    if (!dryRunIsDateOnlyString_(raw)) {
+      return {
+        isValid: false,
+        date: null,
+        message: 'Restore ' + label + ' must be YYYY-MM-DD for an all-day event.'
+      };
+    }
+
+    const dateOnly = new Date(raw + 'T00:00:00');
+    if (isNaN(dateOnly.getTime())) {
+      return {
+        isValid: false,
+        date: null,
+        message: 'Restore ' + label + ' is not a valid date.'
+      };
+    }
+
+    return {
+      isValid: true,
+      date: dateOnly,
+      message: ''
+    };
+  }
+
+  const date = new Date(raw);
+  if (isNaN(date.getTime())) {
+    return {
+      isValid: false,
+      date: null,
+      message: 'Restore ' + label + ' is not a valid datetime.'
+    };
+  }
+
+  return {
+    isValid: true,
+    date: date,
+    message: ''
+  };
+}
+
+/**
+ * Returns true when the value is exactly YYYY-MM-DD.
+ *
+ * @param {string} value
+ * @returns {boolean}
+ */
+function dryRunIsDateOnlyString_(value) {
+  return /^\d{4}-\d{2}-\d{2}$/.test(String(value || '').trim());
+}
+
+/**
+ * Converts a stored timed value into ISO string.
+ *
+ * @param {string} value
+ * @returns {string}
+ */
+function dryRunToIsoString_(value) {
+  const date = new Date(value);
+  return date.toISOString();
+}
+
+/**
+ * Builds the notes written back to the Restore row.
+ *
+ * @param {string[]} errors
+ * @param {string[]} warnings
+ * @param {Object} payload
+ * @returns {string}
+ */
+function buildDryRunRestoreNotes_(errors, warnings, payload) {
+  const parts = [];
+
+  parts.push('Payload preview: ' + JSON.stringify(payload));
+
+  if (errors.length > 0) {
+    parts.push('Errors: ' + errors.join(' | '));
+  }
+
+  if (warnings.length > 0) {
+    parts.push('Warnings: ' + warnings.join(' | '));
+  }
+
+  return parts.join(' || ');
+}
+
+
+########################################################################
+FILE: ExecuteRestore.gs
+########################################################################
+
+/**
+ * ExecuteRestore.gs
+ *
+ * Purpose:
+ * Executes one staged restore request from the Restore tab by creating
+ * a new event in the target Google Calendar.
+ *
+ * Design:
+ * - reads a staged restore row from the Restore tab
+ * - prefers a row that matches Config.selected_row_id or Config.selected_event_id
+ * - prefers rows that already passed dry run
+ * - blocks execution when Config.dry_run_restore is TRUE
+ * - explains clearly WHY execution is blocked and WHAT to do next
+ * - validates payload structure again before insert
+ * - creates the event in the target calendar
+ * - writes execution results back into Restore, Events, Config, and Log
+ *
+ * Depends on:
+ * - Helpers.gs
+ *   - APP
+ *   - getConfig()
+ *   - getProjectSheets()
+ *   - setConfigValues()
+ *   - logAction()
+ *   - runWithContext_()
+ *   - safeString()
+ *   - toBoolean()
+ *   - formatTimestamp()
+ *   - validateRequiredTabs()
+ *   - validateRequiredConfigKeys()
+ *
+ * Recommended prerequisite:
+ * - Enable Advanced Google Services > Calendar API
+ * - Enable Google Calendar API in the linked Cloud project
+ */
+
+
+/* ============================================================================
+ * PUBLIC BUTTON FUNCTION
+ * ========================================================================== */
+
+/**
+ * Button action:
+ * Execute one staged restore by creating an event in the target calendar.
+ */
+function executeRestore() {
+  runWithContext_('execute_restore', function (runId, config) {
+    validateRequiredTabs();
+    validateRequiredConfigKeys();
+
+    const sheets = getProjectSheets();
+    executeRestoreValidatePrerequisites_(sheets.restore, sheets.events, config);
+
+    const restoreRecord = resolveExecuteRestoreRecord_(sheets.restore, config);
+
+    if (!restoreRecord) {
+      handleMissingExecuteRestoreRecord_(runId, config);
+      return;
+    }
+
+    const readiness = evaluateExecuteRestoreReadiness_(restoreRecord, config);
+
+    if (!readiness.isReady) {
+      handleBlockedExecuteRestore_(runId, restoreRecord, readiness);
+      return;
+    }
+
+    const executionPlan = buildExecuteRestorePlan_(restoreRecord, config);
+    const createdEvent = createRestoredCalendarEvent_(executionPlan);
+
+    applyExecuteRestoreSuccess_(
+      sheets.restore,
+      sheets.events,
+      restoreRecord,
+      createdEvent,
+      executionPlan
+    );
+
+    const summary = buildExecuteRestoreSummary_(restoreRecord, createdEvent, executionPlan);
+
+    setConfigValues({
+      last_run_status: 'Success',
+      last_run_summary: summary,
+      last_error: '',
+      system_status: APP.STATUS.READY,
+      dry_run_restore: false,
+      selected_row_id: restoreRecord.row.source_row_id,
+      selected_event_id: restoreRecord.row.source_event_id
+    });
+
+    logAction({
+      action: 'execute_restore',
+      status: APP.LOG_STATUS.SUCCESS,
+      detail: summary,
+      runId: runId,
+      eventId: restoreRecord.row.source_event_id,
+      restoreId: restoreRecord.row.restore_id
+    });
+
+    if (executionPlan.warnings.length > 0) {
+      executionPlan.warnings.forEach(function (warning) {
+        logAction({
+          action: 'execute_restore',
+          status: APP.LOG_STATUS.WARNING,
+          detail: warning,
+          runId: runId,
+          eventId: restoreRecord.row.source_event_id,
+          restoreId: restoreRecord.row.restore_id
+        });
+      });
+    }
+
+    SpreadsheetApp.getUi().alert(
+      'Execute Restore complete.\n\n' + summary
+    );
+  });
+}
+
+
+/* ============================================================================
+ * PRECHECKS
+ * ========================================================================== */
+
+/**
+ * Validates that execute restore has what it needs before reading data.
+ *
+ * @param {GoogleAppsScript.Spreadsheet.Sheet} restoreSheet
+ * @param {GoogleAppsScript.Spreadsheet.Sheet} eventsSheet
+ * @param {Object} config
+ */
+function executeRestoreValidatePrerequisites_(restoreSheet, eventsSheet, config) {
+  if (typeof Calendar === 'undefined' || !Calendar.Events || !Calendar.Events.insert) {
+    throw new Error(
+      'Advanced Calendar service is not enabled. Enable the Calendar API in Apps Script advanced services before running Execute Restore.'
+    );
+  }
+
+  if (!config.target_calendar_id) {
+    throw new Error('Config.target_calendar_id is required for Execute Restore.');
+  }
+
+  executeRestoreValidateRestoreHeaders_(restoreSheet);
+  executeRestoreValidateEventsHeaders_(eventsSheet);
+}
+
+/**
+ * Ensures the Restore tab matches the expected structure.
+ *
+ * @param {GoogleAppsScript.Spreadsheet.Sheet} sheet
+ */
+function executeRestoreValidateRestoreHeaders_(sheet) {
+  const expectedHeaders = [
+    'restore_id',
+    'source_row_id',
+    'source_event_id',
+    'target_calendar_id',
+    'restore_mode',
+    'title',
+    'description',
+    'location',
+    'start_time',
+    'end_time',
+    'all_day',
+    'attendees',
+    'validation_status',
+    'execution_status',
+    'restored_event_id',
+    'executed_at',
+    'notes'
+  ];
+
+  executeRestoreValidateHeaders_(sheet, expectedHeaders, 'Restore');
+}
+
+/**
+ * Ensures the Events tab matches the expected structure.
+ *
+ * @param {GoogleAppsScript.Spreadsheet.Sheet} sheet
+ */
+function executeRestoreValidateEventsHeaders_(sheet) {
+  const expectedHeaders = [
+    'row_id',
+    'event_id',
+    'calendar_id',
+    'title',
+    'description',
+    'location',
+    'start_time',
+    'end_time',
+    'all_day',
+    'status',
+    'created_at',
+    'updated_at',
+    'organizer',
+    'creator',
+    'attendees',
+    'raw_text',
+    'raw_json',
+    'restore_ready',
+    'restore_status',
+    'notes'
+  ];
+
+  executeRestoreValidateHeaders_(sheet, expectedHeaders, 'Events');
+}
+
+/**
+ * Shared ordered-header validator.
+ *
+ * @param {GoogleAppsScript.Spreadsheet.Sheet} sheet
+ * @param {string[]} expectedHeaders
+ * @param {string} label
+ */
+function executeRestoreValidateHeaders_(sheet, expectedHeaders, label) {
+  const actualHeaders = sheet
+    .getRange(1, 1, 1, expectedHeaders.length)
+    .getValues()[0]
+    .map(function (value) {
+      return String(value || '').trim();
+    });
+
+  const mismatches = [];
+
+  expectedHeaders.forEach(function (header, index) {
+    if (actualHeaders[index] !== header) {
+      mismatches.push(
+        'column ' + (index + 1) + ': expected "' + header + '" but found "' + actualHeaders[index] + '"'
+      );
+    }
+  });
+
+  if (mismatches.length > 0) {
+    throw new Error(label + ' tab headers are invalid for Execute Restore. ' + mismatches.join('; '));
+  }
+}
+
+
+/* ============================================================================
+ * ADVISORY FLOW
+ * ========================================================================== */
+
+/**
+ * Handles the case where there is no suitable restore row to execute.
+ *
+ * @param {string} runId
+ * @param {Object} config
+ */
+function handleMissingExecuteRestoreRecord_(runId, config) {
+  const guidance = buildMissingExecuteRestoreMessage_(config);
+
+  setConfigValues({
+    last_run_status: 'Action Needed',
+    last_run_summary: guidance.summaryMessage,
+    last_error: guidance.shortMessage,
+    system_status: APP.STATUS.READY
+  });
+
+  logAction({
+    action: 'execute_restore',
+    status: APP.LOG_STATUS.WARNING,
+    detail: guidance.logMessage,
+    runId: runId
+  });
+
+  SpreadsheetApp.getUi().alert(guidance.alertMessage);
+}
+
+/**
+ * Builds the advisory message when no execution candidate exists.
+ *
+ * @param {Object} config
+ * @returns {{shortMessage:string, summaryMessage:string, logMessage:string, alertMessage:string}}
+ */
+function buildMissingExecuteRestoreMessage_(config) {
+  const selectedRowId = safeString(config.selected_row_id).trim();
+  const selectedEventId = safeString(config.selected_event_id).trim();
+  const dryRunFlag = toBoolean(config.dry_run_restore);
+
+  const shortMessage =
+    'No restore row is ready for execution yet. Prepare and dry-run a restore row first.';
+
+  const summaryMessage =
+    'Execute Restore is waiting for a restore row that has passed dry run.';
+
+  const logMessage = [
+    'Execute Restore did not run because no suitable restore row was found.',
+    selectedRowId
+      ? 'Current selected_row_id=' + selectedRowId + '.'
+      : 'Config.selected_row_id is blank.',
+    selectedEventId
+      ? 'Current selected_event_id=' + selectedEventId + '.'
+      : 'Config.selected_event_id is blank.',
+    'Config.dry_run_restore=' + (dryRunFlag ? 'TRUE.' : 'FALSE.'),
+    'Next step: select an event source, run Prepare Restore, then run Dry Run Restore, then set Config.dry_run_restore to FALSE before executing.'
+  ].join(' ');
+
+  const alertMessage = [
+    'Execute Restore cannot continue yet.',
+    '',
+    'Why it was blocked:',
+    '- No restore row was found that is ready to execute.',
+    '',
+    'What to do next:',
+    '1. Make sure Config.selected_row_id or Config.selected_event_id points to the event you want.',
+    '2. Run Prepare Restore.',
+    '3. Confirm a new row appears in the Restore tab.',
+    '4. Run Dry Run Restore.',
+    '5. Review that row in Restore and confirm execution_status is dry_run_passed.',
+    '6. Set Config.dry_run_restore to FALSE.',
+    '7. Run Execute Restore again.'
+  ].join('\n');
+
+  return {
+    shortMessage: shortMessage,
+    summaryMessage: summaryMessage,
+    logMessage: logMessage,
+    alertMessage: alertMessage
+  };
+}
+
+/**
+ * Handles a restore row that exists but should not execute yet.
+ *
+ * @param {string} runId
+ * @param {{sheetRowNumber:number, row:Object}} restoreRecord
+ * @param {{isReady:boolean, reasonCodes:string[], blockingErrors:string[], warnings:string[], summary:string, nextSteps:string[], alertMessage:string, logMessage:string}} readiness
+ */
+function handleBlockedExecuteRestore_(runId, restoreRecord, readiness) {
+  setConfigValues({
+    last_run_status: 'Action Needed',
+    last_run_summary: readiness.summary,
+    last_error: readiness.blockingErrors.join(' | '),
+    system_status: APP.STATUS.READY
+  });
+
+  logAction({
+    action: 'execute_restore',
+    status: APP.LOG_STATUS.WARNING,
+    detail: readiness.logMessage,
+    runId: runId,
+    eventId: restoreRecord.row.source_event_id,
+    restoreId: restoreRecord.row.restore_id
+  });
+
+  readiness.warnings.forEach(function (warning) {
+    logAction({
+      action: 'execute_restore',
+      status: APP.LOG_STATUS.WARNING,
+      detail: warning,
+      runId: runId,
+      eventId: restoreRecord.row.source_event_id,
+      restoreId: restoreRecord.row.restore_id
+    });
+  });
+
+  SpreadsheetApp.getUi().alert(readiness.alertMessage);
+}
+
+
+/* ============================================================================
+ * RECORD RESOLUTION
+ * ========================================================================== */
+
+/**
+ * Resolves the restore row to execute.
+ *
+ * Priority:
+ * 1. Latest row matching Config.selected_row_id with execution_status=dry_run_passed
+ * 2. Latest row matching Config.selected_event_id with execution_status=dry_run_passed
+ * 3. Latest row with execution_status=dry_run_passed
+ * 4. Fallback latest row matching selected_row_id
+ * 5. Fallback latest row matching selected_event_id
+ *
+ * @param {GoogleAppsScript.Spreadsheet.Sheet} restoreSheet
+ * @param {Object} config
+ * @returns {{sheetRowNumber:number, row:Object}|null}
+ */
+function resolveExecuteRestoreRecord_(restoreSheet, config) {
+  const data = readExecuteRestoreSheet_(restoreSheet);
+  const selectedRowId = safeString(config.selected_row_id).trim();
+  const selectedEventId = safeString(config.selected_event_id).trim();
+
+  if (data.records.length === 0) {
+    return null;
+  }
+
+  const dryRunPassed = data.records.filter(function (record) {
+    return safeString(record.row.execution_status).toLowerCase() === 'dry_run_passed';
+  });
+
+  if (selectedRowId) {
+    const exactPassedByRow = dryRunPassed.filter(function (record) {
+      return safeString(record.row.source_row_id) === selectedRowId;
+    });
+
+    if (exactPassedByRow.length > 0) {
+      return exactPassedByRow[exactPassedByRow.length - 1];
+    }
+  }
+
+  if (selectedEventId) {
+    const exactPassedByEvent = dryRunPassed.filter(function (record) {
+      return safeString(record.row.source_event_id) === selectedEventId;
+    });
+
+    if (exactPassedByEvent.length > 0) {
+      return exactPassedByEvent[exactPassedByEvent.length - 1];
+    }
+  }
+
+  if (dryRunPassed.length > 0) {
+    return dryRunPassed[dryRunPassed.length - 1];
+  }
+
+  if (selectedRowId) {
+    const fallbackByRow = data.records.filter(function (record) {
+      return safeString(record.row.source_row_id) === selectedRowId;
+    });
+
+    if (fallbackByRow.length > 0) {
+      return fallbackByRow[fallbackByRow.length - 1];
+    }
+  }
+
+  if (selectedEventId) {
+    const fallbackByEvent = data.records.filter(function (record) {
+      return safeString(record.row.source_event_id) === selectedEventId;
+    });
+
+    if (fallbackByEvent.length > 0) {
+      return fallbackByEvent[fallbackByEvent.length - 1];
+    }
+  }
+
+  return null;
+}
+
+/**
+ * Reads the Restore sheet into structured records.
+ *
+ * @param {GoogleAppsScript.Spreadsheet.Sheet} sheet
+ * @returns {{records:Array}}
+ */
+function readExecuteRestoreSheet_(sheet) {
+  const lastRow = sheet.getLastRow();
+  const lastColumn = sheet.getLastColumn();
+
+  if (lastRow < 2) {
+    return { records: [] };
+  }
+
+  const headers = sheet.getRange(1, 1, 1, lastColumn).getValues()[0];
+  const rows = sheet.getRange(2, 1, lastRow - 1, lastColumn).getValues();
+  const colMap = buildExecuteRestoreColumnMap_(headers);
+
+  const records = rows.map(function (rowValues, index) {
+    return {
+      sheetRowNumber: index + 2,
+      row: mapExecuteRestoreArrayToObject_(rowValues, colMap)
+    };
+  });
+
+  return { records: records };
+}
+
+/**
+ * Maps a Restore row array into an object keyed by header names.
+ *
+ * @param {Array} rowValues
+ * @param {Object} colMap
+ * @returns {Object}
+ */
+function mapExecuteRestoreArrayToObject_(rowValues, colMap) {
+  return {
+    restore_id: safeString(rowValues[colMap.restore_id]),
+    source_row_id: safeString(rowValues[colMap.source_row_id]),
+    source_event_id: safeString(rowValues[colMap.source_event_id]),
+    target_calendar_id: safeString(rowValues[colMap.target_calendar_id]),
+    restore_mode: safeString(rowValues[colMap.restore_mode]),
+    title: safeString(rowValues[colMap.title]),
+    description: safeString(rowValues[colMap.description]),
+    location: safeString(rowValues[colMap.location]),
+    start_time: executeRestoreNormalizeCellValue_(rowValues[colMap.start_time]),
+    end_time: executeRestoreNormalizeCellValue_(rowValues[colMap.end_time]),
+    all_day: executeRestoreNormalizeBoolean_(rowValues[colMap.all_day]),
+    attendees: safeString(rowValues[colMap.attendees]),
+    validation_status: safeString(rowValues[colMap.validation_status]),
+    execution_status: safeString(rowValues[colMap.execution_status]),
+    restored_event_id: safeString(rowValues[colMap.restored_event_id]),
+    executed_at: executeRestoreNormalizeCellValue_(rowValues[colMap.executed_at]),
+    notes: safeString(rowValues[colMap.notes])
+  };
+}
+
+
+/* ============================================================================
+ * READINESS / PLAN
+ * ========================================================================== */
+
+/**
+ * Evaluates whether the selected restore row is safe to execute.
+ *
+ * @param {{sheetRowNumber:number, row:Object}} restoreRecord
+ * @param {Object} config
+ * @returns {{isReady:boolean, reasonCodes:string[], blockingErrors:string[], warnings:string[], summary:string, nextSteps:string[], alertMessage:string, logMessage:string}}
+ */
+function evaluateExecuteRestoreReadiness_(restoreRecord, config) {
+  const row = restoreRecord.row;
+  const blockingErrors = [];
+  const warnings = [];
+  const reasonCodes = [];
+  const nextSteps = [];
+
+  if (toBoolean(config.dry_run_restore)) {
+    reasonCodes.push('dry_run_flag_true');
+    blockingErrors.push('Config.dry_run_restore is TRUE.');
+    nextSteps.push('Set Config.dry_run_restore to FALSE after you are satisfied with the dry-run result.');
+  }
+
+  if (!row.restore_id) {
+    reasonCodes.push('missing_restore_id');
+    blockingErrors.push('Restore row is missing restore_id.');
+  }
+
+  if (!row.target_calendar_id) {
+    reasonCodes.push('missing_target_calendar');
+    blockingErrors.push('Restore row is missing target_calendar_id.');
+  }
+
+  if (safeString(row.target_calendar_id) !== safeString(config.target_calendar_id)) {
+    warnings.push('Restore row target_calendar_id does not match Config.target_calendar_id.');
+  }
+
+  if (safeString(row.validation_status).toLowerCase() !== 'valid') {
+    reasonCodes.push('not_validated');
+    blockingErrors.push('Restore row validation_status is not valid.');
+    nextSteps.push('Run Prepare Restore again if needed, then run Dry Run Restore until validation_status becomes valid.');
+  }
+
+  const executionStatus = safeString(row.execution_status).toLowerCase();
+
+  if (executionStatus === 'executed') {
+    reasonCodes.push('already_executed');
+    blockingErrors.push('This restore row has already been executed.');
+    nextSteps.push('Do not run this restore row again. Create a new restore row only if you intentionally want another copy.');
+  } else if (executionStatus === 'dry_run_failed') {
+    reasonCodes.push('dry_run_failed');
+    blockingErrors.push('Dry Run Restore failed for this row.');
+    nextSteps.push('Review the Restore row notes, correct the problem, then run Dry Run Restore again.');
+  } else if (executionStatus === 'prepared') {
+    reasonCodes.push('not_dry_run_yet');
+    blockingErrors.push('This restore row has been prepared, but Dry Run Restore has not been completed yet.');
+    nextSteps.push('Run Dry Run Restore for this restore row before executing.');
+  } else if (executionStatus === 'blocked') {
+    reasonCodes.push('prepare_blocked');
+    blockingErrors.push('Prepare Restore marked this row as blocked.');
+    nextSteps.push('Review why the row was blocked in Restore.notes, fix the source selection or source event, then run Prepare Restore again.');
+  } else if (executionStatus !== 'dry_run_passed') {
+    reasonCodes.push('unknown_or_incomplete_status');
+    blockingErrors.push('Dry Run Restore must pass before execution.');
+    nextSteps.push('Run Dry Run Restore and confirm execution_status becomes dry_run_passed.');
+  }
+
+  if (row.restored_event_id) {
+    reasonCodes.push('already_has_restored_event');
+    blockingErrors.push('This restore row already has restored_event_id=' + row.restored_event_id);
+    nextSteps.push('Treat this row as already restored unless you intentionally want to create another restored copy.');
+  }
+
+  const summary = buildExecuteRestoreBlockedSummary_(restoreRecord, reasonCodes, blockingErrors, warnings);
+  const alertMessage = buildExecuteRestoreBlockedAlert_(restoreRecord, reasonCodes, blockingErrors, nextSteps, warnings);
+  const logMessage = buildExecuteRestoreBlockedLogMessage_(restoreRecord, reasonCodes, blockingErrors, nextSteps, warnings);
+
+  return {
+    isReady: blockingErrors.length === 0,
+    reasonCodes: reasonCodes,
+    blockingErrors: blockingErrors,
+    warnings: warnings,
+    summary: summary,
+    nextSteps: nextSteps,
+    alertMessage: alertMessage,
+    logMessage: logMessage
+  };
+}
+
+/**
+ * Builds the execution plan and payload.
+ *
+ * @param {{sheetRowNumber:number, row:Object}} restoreRecord
+ * @param {Object} config
+ * @returns {{calendarId:string, payload:Object, parsedAttendeeCount:number, invalidAttendeeCount:number, warnings:string[]}}
+ */
+function buildExecuteRestorePlan_(restoreRecord, config) {
+  const row = restoreRecord.row;
+  const warnings = [];
+  const parsedAttendees = executeRestoreParseAttendees_(row.attendees);
+
+  if (parsedAttendees.invalidTokens.length > 0) {
+    warnings.push(
+      'Some attendees could not be parsed and were omitted: ' + parsedAttendees.invalidTokens.join(' | ')
+    );
+  }
+
+  const startInfo = executeRestoreParseStoredDateValue_(row.start_time, row.all_day, 'start_time');
+  const endInfo = executeRestoreParseStoredDateValue_(row.end_time, row.all_day, 'end_time');
+
+  if (!startInfo.isValid) {
+    throw new Error(startInfo.message);
+  }
+
+  if (!endInfo.isValid) {
+    throw new Error(endInfo.message);
+  }
+
+  if (endInfo.date.getTime() <= startInfo.date.getTime()) {
+    throw new Error('Restore end_time must be later than start_time.');
+  }
+
+  const payload = buildExecuteRestoreCalendarPayload_(row, parsedAttendees.validEmails);
+
+  validateExecuteRestoreCalendarAccess_(row.target_calendar_id || config.target_calendar_id);
+
+  return {
+    calendarId: safeString(row.target_calendar_id || config.target_calendar_id),
+    payload: payload,
+    parsedAttendeeCount: parsedAttendees.validEmails.length,
+    invalidAttendeeCount: parsedAttendees.invalidTokens.length,
+    warnings: warnings
+  };
+}
+
+/**
+ * Creates the new restored event in the target calendar.
+ *
+ * @param {{calendarId:string, payload:Object}} executionPlan
+ * @returns {Object}
+ */
+function createRestoredCalendarEvent_(executionPlan) {
+  return Calendar.Events.insert(executionPlan.payload, executionPlan.calendarId);
+}
+
+
+/* ============================================================================
+ * SHEET WRITEBACK
+ * ========================================================================== */
+
+/**
+ * Applies successful execution results back into Restore and Events.
+ *
+ * @param {GoogleAppsScript.Spreadsheet.Sheet} restoreSheet
+ * @param {GoogleAppsScript.Spreadsheet.Sheet} eventsSheet
+ * @param {{sheetRowNumber:number, row:Object}} restoreRecord
+ * @param {Object} createdEvent
+ * @param {Object} executionPlan
+ */
+function applyExecuteRestoreSuccess_(restoreSheet, eventsSheet, restoreRecord, createdEvent, executionPlan) {
+  const restoreHeaders = restoreSheet.getRange(1, 1, 1, restoreSheet.getLastColumn()).getValues()[0];
+  const restoreColMap = buildExecuteRestoreColumnMap_(restoreHeaders);
+  const nowText = formatTimestamp(new Date());
+
+  restoreSheet.getRange(restoreRecord.sheetRowNumber, restoreColMap.restore_mode + 1).setValue('execute');
+  restoreSheet.getRange(restoreRecord.sheetRowNumber, restoreColMap.validation_status + 1).setValue('valid');
+  restoreSheet.getRange(restoreRecord.sheetRowNumber, restoreColMap.execution_status + 1).setValue('executed');
+  restoreSheet.getRange(restoreRecord.sheetRowNumber, restoreColMap.restored_event_id + 1).setValue(safeString(createdEvent.id));
+  restoreSheet.getRange(restoreRecord.sheetRowNumber, restoreColMap.executed_at + 1).setValue(nowText);
+  restoreSheet.getRange(restoreRecord.sheetRowNumber, restoreColMap.notes + 1).setValue(
+    buildExecuteRestoreNotes_(createdEvent, executionPlan)
+  );
+
+  updateSourceEventRestoreStatusForExecution_(eventsSheet, restoreRecord.row.source_row_id, 'restored');
+}
+
+/**
+ * Updates the matching Events row restore_status after successful execution.
+ *
+ * @param {GoogleAppsScript.Spreadsheet.Sheet} eventsSheet
+ * @param {string} sourceRowId
+ * @param {string} status
+ */
+function updateSourceEventRestoreStatusForExecution_(eventsSheet, sourceRowId, status) {
+  if (!sourceRowId) {
+    return;
+  }
+
+  const lastRow = eventsSheet.getLastRow();
+  const lastColumn = eventsSheet.getLastColumn();
+
+  if (lastRow < 2) {
+    return;
+  }
+
+  const headers = eventsSheet.getRange(1, 1, 1, lastColumn).getValues()[0];
+  const rows = eventsSheet.getRange(2, 1, lastRow - 1, lastColumn).getValues();
+  const colMap = buildExecuteRestoreColumnMap_(headers);
+
+  for (var i = 0; i < rows.length; i++) {
+    if (safeString(rows[i][colMap.row_id]) === safeString(sourceRowId)) {
+      eventsSheet.getRange(i + 2, colMap.restore_status + 1).setValue(status);
+      return;
+    }
+  }
+}
+
+
+/* ============================================================================
+ * SUMMARY / MESSAGING
+ * ========================================================================== */
+
+/**
+ * Builds the summary written to Config and Log after success.
+ *
+ * @param {{sheetRowNumber:number, row:Object}} restoreRecord
+ * @param {Object} createdEvent
+ * @param {Object} executionPlan
+ * @returns {string}
+ */
+function buildExecuteRestoreSummary_(restoreRecord, createdEvent, executionPlan) {
+  const parts = [
+    'Execute Restore complete',
+    'restore_id=' + restoreRecord.row.restore_id,
+    'source_row_id=' + restoreRecord.row.source_row_id,
+    'source_event_id=' + restoreRecord.row.source_event_id,
+    'restored_event_id=' + safeString(createdEvent.id),
+    'target_calendar_id=' + restoreRecord.row.target_calendar_id,
+    'execution_status=executed',
+    'parsed_attendees=' + executionPlan.parsedAttendeeCount
+  ];
+
+  if (executionPlan.invalidAttendeeCount > 0) {
+    parts.push('invalid_attendees=' + executionPlan.invalidAttendeeCount);
+  }
+
+  return parts.join(' | ');
+}
+
+/**
+ * Builds the blocked summary written to Config.last_run_summary.
+ *
+ * @param {{sheetRowNumber:number, row:Object}} restoreRecord
+ * @param {string[]} reasonCodes
+ * @param {string[]} blockingErrors
+ * @param {string[]} warnings
+ * @returns {string}
+ */
+function buildExecuteRestoreBlockedSummary_(restoreRecord, reasonCodes, blockingErrors, warnings) {
+  const parts = [
+    'Execute Restore blocked',
+    'restore_id=' + safeString(restoreRecord.row.restore_id),
+    'source_row_id=' + safeString(restoreRecord.row.source_row_id),
+    'source_event_id=' + safeString(restoreRecord.row.source_event_id),
+    'validation_status=' + safeString(restoreRecord.row.validation_status),
+    'execution_status=' + safeString(restoreRecord.row.execution_status),
+    'reason=' + executeRestoreHumanizeReasonCodes_(reasonCodes),
+    'errors=' + blockingErrors.length
+  ];
+
+  if (warnings.length > 0) {
+    parts.push('warnings=' + warnings.length);
+  }
+
+  return parts.join(' | ');
+}
+
+/**
+ * Builds the UI alert for blocked execution.
+ *
+ * @param {{sheetRowNumber:number, row:Object}} restoreRecord
+ * @param {string[]} reasonCodes
+ * @param {string[]} blockingErrors
+ * @param {string[]} nextSteps
+ * @param {string[]} warnings
+ * @returns {string}
+ */
+function buildExecuteRestoreBlockedAlert_(restoreRecord, reasonCodes, blockingErrors, nextSteps, warnings) {
+  const lines = [
+    'Execute Restore cannot continue yet.',
+    '',
+    'Restore row:',
+    '- restore_id: ' + safeString(restoreRecord.row.restore_id),
+    '- source_row_id: ' + safeString(restoreRecord.row.source_row_id),
+    '- source_event_id: ' + safeString(restoreRecord.row.source_event_id),
+    '',
+    'Why it was blocked:'
+  ];
+
+  blockingErrors.forEach(function (error) {
+    lines.push('- ' + error);
+  });
+
+  if (warnings.length > 0) {
+    lines.push('');
+    lines.push('Warnings:');
+    warnings.forEach(function (warning) {
+      lines.push('- ' + warning);
+    });
+  }
+
+  if (nextSteps.length > 0) {
+    lines.push('');
+    lines.push('What to do next:');
+    nextSteps.forEach(function (step, index) {
+      lines.push((index + 1) + '. ' + step);
+    });
+  }
+
+  lines.push('');
+  lines.push('Recommended order: Prepare Restore → Dry Run Restore → set dry_run_restore to FALSE → Execute Restore');
+
+  return lines.join('\n');
+}
+
+/**
+ * Builds the detailed log message for blocked execution.
+ *
+ * @param {{sheetRowNumber:number, row:Object}} restoreRecord
+ * @param {string[]} reasonCodes
+ * @param {string[]} blockingErrors
+ * @param {string[]} nextSteps
+ * @param {string[]} warnings
+ * @returns {string}
+ */
+function buildExecuteRestoreBlockedLogMessage_(restoreRecord, reasonCodes, blockingErrors, nextSteps, warnings) {
+  const parts = [
+    'Execute Restore was blocked.',
+    'restore_id=' + safeString(restoreRecord.row.restore_id) + '.',
+    'source_row_id=' + safeString(restoreRecord.row.source_row_id) + '.',
+    'source_event_id=' + safeString(restoreRecord.row.source_event_id) + '.',
+    'Reason=' + executeRestoreHumanizeReasonCodes_(reasonCodes) + '.',
+    'Blocking issues: ' + blockingErrors.join(' | ') + '.'
+  ];
+
+  if (warnings.length > 0) {
+    parts.push('Warnings: ' + warnings.join(' | ') + '.');
+  }
+
+  if (nextSteps.length > 0) {
+    parts.push('Next steps: ' + nextSteps.join(' Then ') + '.');
+  }
+
+  return parts.join(' ');
+}
+
+/**
+ * Humanizes reason codes into a concise label.
+ *
+ * @param {string[]} reasonCodes
+ * @returns {string}
+ */
+function executeRestoreHumanizeReasonCodes_(reasonCodes) {
+  if (!reasonCodes || reasonCodes.length === 0) {
+    return 'none';
+  }
+
+  const labels = [];
+
+  if (reasonCodes.indexOf('dry_run_flag_true') !== -1) {
+    labels.push('dry_run_restore is TRUE');
+  }
+  if (reasonCodes.indexOf('not_dry_run_yet') !== -1) {
+    labels.push('dry run not completed');
+  }
+  if (reasonCodes.indexOf('dry_run_failed') !== -1) {
+    labels.push('dry run failed');
+  }
+  if (reasonCodes.indexOf('prepare_blocked') !== -1) {
+    labels.push('prepare restore blocked');
+  }
+  if (reasonCodes.indexOf('not_validated') !== -1) {
+    labels.push('restore row not valid');
+  }
+  if (reasonCodes.indexOf('already_executed') !== -1 || reasonCodes.indexOf('already_has_restored_event') !== -1) {
+    labels.push('already executed');
+  }
+  if (reasonCodes.indexOf('missing_target_calendar') !== -1) {
+    labels.push('target calendar missing');
+  }
+  if (reasonCodes.indexOf('missing_restore_id') !== -1) {
+    labels.push('restore row incomplete');
+  }
+  if (reasonCodes.indexOf('unknown_or_incomplete_status') !== -1) {
+    labels.push('restore status incomplete');
+  }
+
+  return labels.join(', ');
+}
+
+/**
+ * Builds the notes written back into the Restore row after success.
+ *
+ * @param {Object} createdEvent
+ * @param {Object} executionPlan
+ * @returns {string}
+ */
+function buildExecuteRestoreNotes_(createdEvent, executionPlan) {
+  const parts = [
+    'Execution complete',
+    'Created event id: ' + safeString(createdEvent.id),
+    'Created event status: ' + safeString(createdEvent.status),
+    'Payload used: ' + JSON.stringify(executionPlan.payload)
+  ];
+
+  if (executionPlan.warnings.length > 0) {
+    parts.push('Warnings: ' + executionPlan.warnings.join(' | '));
+  }
+
+  return parts.join(' || ');
+}
+
+
+/* ============================================================================
+ * LOW-LEVEL HELPERS
+ * ========================================================================== */
+
+/**
+ * Builds a header-name -> column-index map.
+ *
+ * @param {Array} headers
+ * @returns {Object}
+ */
+function buildExecuteRestoreColumnMap_(headers) {
+  const map = {};
+
+  headers.forEach(function (header, index) {
+    map[String(header || '').trim()] = index;
+  });
+
+  return map;
+}
+
+/**
+ * Normalizes cell values for object mapping.
+ *
+ * @param {*} value
+ * @returns {*}
+ */
+function executeRestoreNormalizeCellValue_(value) {
+  if (value === null || value === undefined || value === '') {
+    return '';
+  }
+
+  if (value instanceof Date) {
+    return formatTimestamp(value);
+  }
+
+  return value;
+}
+
+/**
+ * Normalizes boolean-like values from the sheet.
+ *
+ * @param {*} value
+ * @returns {boolean}
+ */
+function executeRestoreNormalizeBoolean_(value) {
+  return toBoolean(value);
+}
+
+/**
+ * Parses the attendee text cell.
+ *
+ * Accepted input examples:
+ * - name <email@example.com> | another@example.com
+ * - email@example.com | second@example.com
+ *
+ * @param {string} attendeesText
+ * @returns {{validEmails:string[], invalidTokens:string[]}}
+ */
+function executeRestoreParseAttendees_(attendeesText) {
+  const raw = safeString(attendeesText).trim();
+
+  if (!raw) {
+    return {
+      validEmails: [],
+      invalidTokens: []
+    };
+  }
+
+  const emailRegex = /<?([A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,})>?/i;
+  const tokens = raw.split('|').map(function (token) {
+    return token.trim();
+  }).filter(Boolean);
+
+  const validEmails = [];
+  const invalidTokens = [];
+
+  tokens.forEach(function (token) {
+    const match = token.match(emailRegex);
+
+    if (match && match[1]) {
+      validEmails.push(match[1]);
+    } else {
+      invalidTokens.push(token);
+    }
+  });
+
+  return {
+    validEmails: validEmails,
+    invalidTokens: invalidTokens
+  };
+}
+
+/**
+ * Parses a stored date value according to all-day or timed rules.
+ *
+ * @param {*} value
+ * @param {boolean} allDay
+ * @param {string} label
+ * @returns {{isValid:boolean, date:Date|null, message:string}}
+ */
+function executeRestoreParseStoredDateValue_(value, allDay, label) {
+  const raw = safeString(value).trim();
+
+  if (!raw) {
+    return {
+      isValid: false,
+      date: null,
+      message: 'Restore ' + label + ' is blank.'
+    };
+  }
+
+  if (allDay === true) {
+    if (!executeRestoreIsDateOnlyString_(raw)) {
+      return {
+        isValid: false,
+        date: null,
+        message: 'Restore ' + label + ' must be YYYY-MM-DD for an all-day event.'
+      };
+    }
+
+    const dateOnly = new Date(raw + 'T00:00:00');
+    if (isNaN(dateOnly.getTime())) {
+      return {
+        isValid: false,
+        date: null,
+        message: 'Restore ' + label + ' is not a valid date.'
+      };
+    }
+
+    return {
+      isValid: true,
+      date: dateOnly,
+      message: ''
+    };
+  }
+
+  const date = new Date(raw);
+  if (isNaN(date.getTime())) {
+    return {
+      isValid: false,
+      date: null,
+      message: 'Restore ' + label + ' is not a valid datetime.'
+    };
+  }
+
+  return {
+    isValid: true,
+    date: date,
+    message: ''
+  };
+}
+
+/**
+ * Returns true when the value is exactly YYYY-MM-DD.
+ *
+ * @param {string} value
+ * @returns {boolean}
+ */
+function executeRestoreIsDateOnlyString_(value) {
+  return /^\d{4}-\d{2}-\d{2}$/.test(String(value || '').trim());
+}
+
+/**
+ * Converts a stored timed value into ISO string.
+ *
+ * @param {string} value
+ * @returns {string}
+ */
+function executeRestoreToIsoString_(value) {
+  const date = new Date(value);
+  return date.toISOString();
+}
+
+/**
+ * Confirms target calendar access before insert.
+ *
+ * @param {string} calendarId
+ */
+function validateExecuteRestoreCalendarAccess_(calendarId) {
+  const normalizedId = safeString(calendarId).trim();
+
+  if (!normalizedId) {
+    throw new Error('No target calendar id was provided for Execute Restore.');
+  }
+
+  try {
+    Calendar.Calendars.get(normalizedId);
+  } catch (error) {
+    throw new Error('Target calendar could not be accessed: ' + error.message);
+  }
+}
+
+/**
+ * Builds the payload to send to Calendar.Events.insert.
+ *
+ * @param {Object} row
+ * @param {string[]} attendeeEmails
+ * @returns {Object}
+ */
+function buildExecuteRestoreCalendarPayload_(row, attendeeEmails) {
+  const payload = {
+    summary: row.title || '',
+    description: row.description || '',
+    location: row.location || ''
+  };
+
+  if (row.all_day === true) {
+    payload.start = { date: safeString(row.start_time) };
+    payload.end = { date: safeString(row.end_time) };
+  } else {
+    payload.start = { dateTime: executeRestoreToIsoString_(row.start_time) };
+    payload.end = { dateTime: executeRestoreToIsoString_(row.end_time) };
+  }
+
+  if (attendeeEmails.length > 0) {
+    payload.attendees = attendeeEmails.map(function (email) {
+      return { email: email };
+    });
+  }
+
+  return payload;
+}
+
+
+########################################################################
+FILE: Helpers.gs
+########################################################################
+
+/**
+ * Event Log Sandbox - Standard Helper Module
+ *
+ * Purpose:
+ * Shared utility functions used across the project for:
+ * - reading and writing Config values
+ * - locating required tabs
+ * - logging actions to the Log tab
+ * - generating IDs
+ * - normalizing values from Sheets
+ *
+ * Intended tabs:
+ * - Config
+ * - Events
+ * - Restore
+ * - Log
+ *
+ * Notes:
+ * - Config is expected to use row 1 for headers and row 2 for values.
+ * - This helper is intentionally lightweight and aligned to the simplified MVP.
+ */
+
+
+/* ============================================================================
+ * PROJECT CONSTANTS
+ * ========================================================================== */
+
+const APP = Object.freeze({
+  TAB_CONFIG: 'Config',
+  TAB_EVENTS: 'Events',
+  TAB_RESTORE: 'Restore',
+  TAB_LOG: 'Log',
+
+  CONFIG_HEADER_ROW: 1,
+  CONFIG_VALUE_ROW: 2,
+
+  LOG_HEADER_ROW: 1,
+
+  TIMEZONE_FALLBACK: Session.getScriptTimeZone() || 'America/Toronto',
+
+  STATUS: Object.freeze({
+    READY: 'READY',
+    RUNNING: 'RUNNING',
+    FAILED: 'FAILED',
+    LOCKED: 'LOCKED',
+    SUCCESS: 'SUCCESS',
+    NOT_RUN: 'Not Run'
+  }),
+
+  LOG_STATUS: Object.freeze({
+    INFO: 'info',
+    SUCCESS: 'success',
+    WARNING: 'warning',
+    ERROR: 'error'
+  })
+});
+
+
+/* ============================================================================
+ * CORE SPREADSHEET ACCESS
+ * ========================================================================== */
+
+/**
+ * Returns the active spreadsheet.
+ * @returns {GoogleAppsScript.Spreadsheet.Spreadsheet}
+ */
+function getSpreadsheet() {
+  return SpreadsheetApp.getActiveSpreadsheet();
+}
+
+/**
+ * Returns a sheet by name or throws a helpful error.
+ * @param {string} sheetName
+ * @returns {GoogleAppsScript.Spreadsheet.Sheet}
+ */
+function getSheetOrThrow(sheetName) {
+  const sheet = getSpreadsheet().getSheetByName(sheetName);
+
+  if (!sheet) {
+    throw new Error(`Required tab not found: ${sheetName}`);
+  }
+
+  return sheet;
+}
+
+/**
+ * Returns all required project sheets in one object.
+ * Useful when a function needs several tabs at once.
+ * @returns {{config: GoogleAppsScript.Spreadsheet.Sheet, events: GoogleAppsScript.Spreadsheet.Sheet, restore: GoogleAppsScript.Spreadsheet.Sheet, log: GoogleAppsScript.Spreadsheet.Sheet}}
+ */
+function getProjectSheets() {
+  return {
+    config: getSheetOrThrow(APP.TAB_CONFIG),
+    events: getSheetOrThrow(APP.TAB_EVENTS),
+    restore: getSheetOrThrow(APP.TAB_RESTORE),
+    log: getSheetOrThrow(APP.TAB_LOG)
+  };
+}
+
+
+/* ============================================================================
+ * CONFIG HELPERS
+ * ========================================================================== */
+
+/**
+ * Reads the Config tab and returns a plain object keyed by header names.
+ * Row 1 = headers
+ * Row 2 = values
+ *
+ * Example:
+ * const config = getConfig();
+ * Logger.log(config.source_calendar_id);
+ *
+ * @returns {Object}
+ */
+function getConfig() {
+  const sheet = getSheetOrThrow(APP.TAB_CONFIG);
+  const lastColumn = sheet.getLastColumn();
+
+  if (lastColumn < 1) {
+    throw new Error('Config tab appears to be empty.');
+  }
+
+  const headers = sheet
+    .getRange(APP.CONFIG_HEADER_ROW, 1, 1, lastColumn)
+    .getValues()[0];
+
+  const values = sheet
+    .getRange(APP.CONFIG_VALUE_ROW, 1, 1, lastColumn)
+    .getValues()[0];
+
+  const config = {};
+
+  headers.forEach((header, index) => {
+    const key = normalizeHeaderKey(header);
+
+    if (!key) {
+      return;
+    }
+
+    config[key] = normalizeSheetValue(values[index]);
+  });
+
+  return config;
+}
+
+/**
+ * Returns a single Config value by key.
+ * @param {string} key
+ * @returns {*}
+ */
+function getConfigValue(key) {
+  const config = getConfig();
+
+  if (!(key in config)) {
+    throw new Error(`Config key not found: ${key}`);
+  }
+
+  return config[key];
+}
+
+/**
+ * Sets a single Config value by matching the header in row 1.
+ * Writes the value into row 2.
+ *
+ * @param {string} key
+ * @param {*} newValue
+ */
+function setConfigValue(key, newValue) {
+  const sheet = getSheetOrThrow(APP.TAB_CONFIG);
+  const lastColumn = sheet.getLastColumn();
+
+  const headers = sheet
+    .getRange(APP.CONFIG_HEADER_ROW, 1, 1, lastColumn)
+    .getValues()[0]
+    .map(normalizeHeaderKey);
+
+  const columnIndex = headers.indexOf(normalizeHeaderKey(key));
+
+  if (columnIndex === -1) {
+    throw new Error(`Config key not found: ${key}`);
+  }
+
+  sheet.getRange(APP.CONFIG_VALUE_ROW, columnIndex + 1).setValue(newValue);
+}
+
+/**
+ * Sets multiple Config values at once.
+ * This avoids repeated sheet reads/writes across future functions.
+ *
+ * @param {Object} updates
+ */
+function setConfigValues(updates) {
+  if (!updates || typeof updates !== 'object') {
+    throw new Error('setConfigValues expects an object of key/value pairs.');
+  }
+
+  const sheet = getSheetOrThrow(APP.TAB_CONFIG);
+  const lastColumn = sheet.getLastColumn();
+
+  const headers = sheet
+    .getRange(APP.CONFIG_HEADER_ROW, 1, 1, lastColumn)
+    .getValues()[0]
+    .map(normalizeHeaderKey);
+
+  Object.keys(updates).forEach((key) => {
+    const normalizedKey = normalizeHeaderKey(key);
+    const columnIndex = headers.indexOf(normalizedKey);
+
+    if (columnIndex === -1) {
+      throw new Error(`Config key not found: ${key}`);
+    }
+
+    sheet.getRange(APP.CONFIG_VALUE_ROW, columnIndex + 1).setValue(updates[key]);
+  });
+}
+
+/**
+ * Convenience wrapper for the most commonly updated status cells.
+ *
+ * @param {Object} options
+ * @param {string=} options.systemStatus
+ * @param {string=} options.lastRunStatus
+ * @param {string=} options.lastRunSummary
+ * @param {string=} options.lastError
+ */
+function updateProjectStatus(options) {
+  const updates = {};
+
+  if ('systemStatus' in options) {
+    updates.system_status = options.systemStatus;
+  }
+
+  if ('lastRunStatus' in options) {
+    updates.last_run_status = options.lastRunStatus;
+  }
+
+  if ('lastRunSummary' in options) {
+    updates.last_run_summary = options.lastRunSummary;
+  }
+
+  if ('lastError' in options) {
+    updates.last_error = options.lastError;
+  }
+
+  if (Object.keys(updates).length > 0) {
+    setConfigValues(updates);
+  }
+}
+
+
+/* ============================================================================
+ * LOCK HELPERS
+ * ========================================================================== */
+
+/**
+ * Returns true if execution_lock is enabled.
+ * @returns {boolean}
+ */
+function isExecutionLocked() {
+  return Boolean(getConfigValue('execution_lock'));
+}
+
+/**
+ * Enables the execution lock and marks system as LOCKED.
+ */
+function lockExecution() {
+  setConfigValues({
+    execution_lock: true,
+    system_status: APP.STATUS.LOCKED
+  });
+}
+
+/**
+ * Clears the execution lock and marks system as READY.
+ */
+function clearExecutionLock() {
+  setConfigValues({
+    execution_lock: false,
+    system_status: APP.STATUS.READY
+  });
+
+  logAction({
+    action: 'clear_lock',
+    status: APP.LOG_STATUS.SUCCESS,
+    detail: 'Execution lock cleared manually.'
+  });
+}
+
+/**
+ * Throws an error if the sheet is currently locked.
+ */
+function assertNotLocked() {
+  if (isExecutionLocked()) {
+    throw new Error('Execution is currently locked. Clear the lock before starting another run.');
+  }
+}
+
+
+/* ============================================================================
+ * LOG HELPERS
+ * ========================================================================== */
+
+/**
+ * Appends a single log row to the Log tab.
+ *
+ * Log columns expected:
+ * timestamp | action | status | detail | run_id | event_id | restore_id
+ *
+ * @param {Object} entry
+ * @param {string} entry.action
+ * @param {string} entry.status
+ * @param {string} entry.detail
+ * @param {string=} entry.runId
+ * @param {string=} entry.eventId
+ * @param {string=} entry.restoreId
+ */
+function logAction(entry) {
+  const sheet = getSheetOrThrow(APP.TAB_LOG);
+
+  const row = [
+    new Date(),
+    safeString(entry.action),
+    safeString(entry.status),
+    safeString(entry.detail),
+    safeString(entry.runId),
+    safeString(entry.eventId),
+    safeString(entry.restoreId)
+  ];
+
+  sheet.appendRow(row);
+}
+
+/**
+ * Convenience wrapper for error logging.
+ *
+ * @param {string} action
+ * @param {Error|string} error
+ * @param {string=} runId
+ * @param {string=} eventId
+ * @param {string=} restoreId
+ */
+function logError(action, error, runId, eventId, restoreId) {
+  const detail = error instanceof Error ? error.message : String(error);
+
+  logAction({
+    action: action,
+    status: APP.LOG_STATUS.ERROR,
+    detail: detail,
+    runId: runId || '',
+    eventId: eventId || '',
+    restoreId: restoreId || ''
+  });
+}
+
+
+/* ============================================================================
+ * ID HELPERS
+ * ========================================================================== */
+
+/**
+ * Generates a reasonably compact unique ID for rows, runs, or restore records.
+ *
+ * Example:
+ * row_20260329_142530_ab12cd
+ *
+ * @param {string=} prefix
+ * @returns {string}
+ */
+function generateId(prefix) {
+  const tz = APP.TIMEZONE_FALLBACK;
+  const timestamp = Utilities.formatDate(new Date(), tz, 'yyyyMMdd_HHmmss');
+  const randomPart = Math.random().toString(36).slice(2, 8);
+
+  return `${safeString(prefix || 'id')}_${timestamp}_${randomPart}`;
+}
+
+/**
+ * Generates a run ID.
+ * @returns {string}
+ */
+function generateRunId() {
+  return generateId('run');
+}
+
+/**
+ * Generates a row ID.
+ * @returns {string}
+ */
+function generateRowId() {
+  return generateId('row');
+}
+
+/**
+ * Generates a restore ID.
+ * @returns {string}
+ */
+function generateRestoreId() {
+  return generateId('restore');
+}
+
+
+/* ============================================================================
+ * VALUE NORMALIZATION
+ * ========================================================================== */
+
+/**
+ * Normalizes a header name into a safe object key.
+ * @param {*} value
+ * @returns {string}
+ */
+function normalizeHeaderKey(value) {
+  return String(value || '').trim();
+}
+
+/**
+ * Normalizes raw sheet cell values into cleaner JS values.
+ *
+ * Rules:
+ * - trims strings
+ * - converts "TRUE"/"FALSE" to booleans
+ * - returns Date objects unchanged
+ * - returns empty string for blank/null values
+ *
+ * @param {*} value
+ * @returns {*}
+ */
+function normalizeSheetValue(value) {
+  if (value === null || value === undefined || value === '') {
+    return '';
+  }
+
+  if (value instanceof Date) {
+    return value;
+  }
+
+  if (typeof value === 'string') {
+    const trimmed = value.trim();
+
+    if (trimmed === 'TRUE') return true;
+    if (trimmed === 'FALSE') return false;
+
+    return trimmed;
+  }
+
+  return value;
+}
+
+/**
+ * Converts a value to boolean using forgiving rules.
+ *
+ * @param {*} value
+ * @returns {boolean}
+ */
+function toBoolean(value) {
+  if (value === true || value === false) {
+    return value;
+  }
+
+  if (value === 1 || value === '1') {
+    return true;
+  }
+
+  if (value === 0 || value === '0') {
+    return false;
+  }
+
+  if (typeof value === 'string') {
+    const normalized = value.trim().toLowerCase();
+    return normalized === 'true' || normalized === 'yes' || normalized === 'y';
+  }
+
+  return Boolean(value);
+}
+
+/**
+ * Returns a string value safely.
+ * Blank/null/undefined becomes ''.
+ *
+ * @param {*} value
+ * @returns {string}
+ */
+function safeString(value) {
+  if (value === null || value === undefined) {
+    return '';
+  }
+
+  return String(value);
+}
+
+/**
+ * Formats a value as an ISO-like timestamp string in the script timezone.
+ * Returns '' if no date is provided.
+ *
+ * @param {Date|string=} value
+ * @returns {string}
+ */
+function formatTimestamp(value) {
+  if (!value) {
+    return '';
+  }
+
+  const date = value instanceof Date ? value : new Date(value);
+
+  if (isNaN(date.getTime())) {
+    return '';
+  }
+
+  return Utilities.formatDate(date, APP.TIMEZONE_FALLBACK, "yyyy-MM-dd'T'HH:mm:ss");
+}
+
+
+/* ============================================================================
+ * TAB VALIDATION HELPERS
+ * ========================================================================== */
+
+/**
+ * Returns true if a sheet exists.
+ * @param {string} sheetName
+ * @returns {boolean}
+ */
+function sheetExists(sheetName) {
+  return Boolean(getSpreadsheet().getSheetByName(sheetName));
+}
+
+/**
+ * Validates that all required tabs exist.
+ * Throws if any are missing.
+ */
+function validateRequiredTabs() {
+  const requiredTabs = [
+    APP.TAB_CONFIG,
+    APP.TAB_EVENTS,
+    APP.TAB_RESTORE,
+    APP.TAB_LOG
+  ];
+
+  const missing = requiredTabs.filter((tabName) => !sheetExists(tabName));
+
+  if (missing.length > 0) {
+    throw new Error(`Missing required tab(s): ${missing.join(', ')}`);
+  }
+}
+
+/**
+ * Checks whether the Config tab contains the expected minimum keys.
+ * Throws if any are missing.
+ */
+function validateRequiredConfigKeys() {
+  const requiredKeys = [
+    'project_name',
+    'source_calendar_id',
+    'target_calendar_id',
+    'mode',
+    'historical_start',
+    'historical_end',
+    'last_sync',
+    'include_cancelled',
+    'expand_recurring',
+    'dry_run_restore',
+    'execution_lock',
+    'selected_event_id',
+    'selected_row_id',
+    'last_run_status',
+    'last_run_summary',
+    'last_error',
+    'system_status'
+  ];
+
+  const config = getConfig();
+  const missing = requiredKeys.filter((key) => !(key in config));
+
+  if (missing.length > 0) {
+    throw new Error(`Missing required Config header(s): ${missing.join(', ')}`);
+  }
+}
+
+
+/* ============================================================================
+ * STANDARD RUN WRAPPER
+ * ========================================================================== */
+
+/**
+ * Standard wrapper for button-triggered actions.
+ *
+ * This gives every future function a shared execution pattern:
+ * - block concurrent runs
+ * - generate run id
+ * - update status
+ * - log success/error
+ *
+ * Example:
+ * runWithContext_('validate_sheet', function(runId, config) {
+ *   // your function logic
+ * });
+ *
+ * @param {string} actionName
+ * @param {Function} fn
+ */
+function runWithContext_(actionName, fn) {
+  const runId = generateRunId();
+
+  try {
+    assertNotLocked();
+
+    setConfigValues({
+      execution_lock: true,
+      system_status: APP.STATUS.RUNNING,
+      last_run_status: 'Running',
+      last_run_summary: '',
+      last_error: ''
+    });
+
+    logAction({
+      action: actionName,
+      status: APP.LOG_STATUS.INFO,
+      detail: 'Run started.',
+      runId: runId
+    });
+
+    const config = getConfig();
+    fn(runId, config);
+
+    setConfigValues({
+      execution_lock: false,
+      system_status: APP.STATUS.READY,
+      last_run_status: APP.STATUS.SUCCESS
+    });
+
+    logAction({
+      action: actionName,
+      status: APP.LOG_STATUS.SUCCESS,
+      detail: 'Run completed successfully.',
+      runId: runId
+    });
+  } catch (error) {
+    setConfigValues({
+      execution_lock: false,
+      system_status: APP.STATUS.FAILED,
+      last_run_status: APP.STATUS.FAILED,
+      last_error: error.message
+    });
+
+    logError(actionName, error, runId);
+    throw error;
+  }
+}
+
+
+########################################################################
+FILE: HistoricalBackup.gs
+########################################################################
+
+/**
+ * HistoricalBackup.gs
+ *
+ * Purpose:
+ * Performs a historical calendar backfill from the source calendar into the
+ * Events tab.
+ *
+ * Design:
+ * - reads date window from Config
+ * - fetches events from Google Calendar Advanced Service
+ * - writes one row per event instance into Events
+ * - upserts existing rows to avoid duplicates on rerun
+ * - stores both readable text and raw JSON for later review / restore
+ * - updates last_sync after completion
+ *
+ * Depends on:
+ * - Helpers.gs
+ *   - APP
+ *   - getConfig()
+ *   - getProjectSheets()
+ *   - setConfigValues()
+ *   - logAction()
+ *   - generateRowId()
+ *   - runWithContext_()
+ *   - formatTimestamp()
+ *   - safeString()
+ *
+ * Recommended prerequisite:
+ * - Enable Advanced Google Services > Calendar API
+ * - Enable Google Calendar API in the linked Cloud project
+ */
+
+
+/* ============================================================================
+ * PUBLIC BUTTON FUNCTION
+ * ========================================================================== */
+
+/**
+ * Button action:
+ * Run a historical backfill from Config.historical_start through
+ * Config.historical_end (or now, if historical_end is blank).
+ */
+function runHistoricalBackup() {
+  runWithContext_('historical_backup', function (runId, config) {
+    validateRequiredTabs();
+    validateRequiredConfigKeys();
+
+    const sheets = getProjectSheets();
+    validateHistoricalBackupPrerequisites_(sheets.events, config);
+
+    const sourceCalendarId = safeString(config.source_calendar_id).trim();
+    const includeCancelled = toBoolean(config.include_cancelled);
+    const expandRecurring = toBoolean(config.expand_recurring);
+
+    const timeMin = asDateOrThrow_(config.historical_start, 'historical_start');
+    const timeMax = config.historical_end
+      ? endOfDay_(asDateOrThrow_(config.historical_end, 'historical_end'))
+      : new Date();
+
+    if (timeMax.getTime() < timeMin.getTime()) {
+      throw new Error('Historical backup window is invalid: historical_end cannot be earlier than historical_start.');
+    }
+
+    const existingIndex = buildExistingEventIndex_(sheets.events);
+    const fetched = fetchHistoricalEvents_(sourceCalendarId, timeMin, timeMax, {
+      includeCancelled: includeCancelled,
+      expandRecurring: expandRecurring
+    });
+
+    const writePlan = buildHistoricalWritePlan_(fetched.items, existingIndex, sourceCalendarId);
+    applyHistoricalWritePlan_(sheets.events, writePlan);
+
+    const lastSyncValue = determineHistoricalLastSync_(fetched.items);
+    const summary = buildHistoricalBackupSummary_({
+      sourceCalendarId: sourceCalendarId,
+      rangeStart: timeMin,
+      rangeEnd: timeMax,
+      fetchedCount: fetched.items.length,
+      insertedCount: writePlan.appendRows.length,
+      updatedCount: writePlan.updateRows.length,
+      pageCount: fetched.pageCount,
+      includeCancelled: includeCancelled,
+      expandRecurring: expandRecurring,
+      lastSync: lastSyncValue
+    });
+
+    setConfigValues({
+      last_sync: lastSyncValue,
+      last_run_status: 'Success',
+      last_run_summary: summary,
+      last_error: '',
+      system_status: APP.STATUS.READY
+    });
+
+    logAction({
+      action: 'historical_backup',
+      status: APP.LOG_STATUS.SUCCESS,
+      detail: summary,
+      runId: runId
+    });
+
+    SpreadsheetApp.getUi().alert(
+      'Historical backup complete.\n\n' + summary
+    );
+  });
+}
+
+
+/* ============================================================================
+ * PRECHECKS
+ * ========================================================================== */
+
+/**
+ * Validates that historical backup has what it needs before fetching data.
+ *
+ * @param {GoogleAppsScript.Spreadsheet.Sheet} eventsSheet
+ * @param {Object} config
+ */
+function validateHistoricalBackupPrerequisites_(eventsSheet, config) {
+  if (typeof Calendar === 'undefined' || !Calendar.Events || !Calendar.Events.list) {
+    throw new Error(
+      'Advanced Calendar service is not enabled. Enable the Calendar API in Apps Script advanced services before running historical backup.'
+    );
+  }
+
+  if (!config.source_calendar_id) {
+    throw new Error('Config.source_calendar_id is required for historical backup.');
+  }
+
+  if (!config.historical_start) {
+    throw new Error('Config.historical_start is required for historical backup.');
+  }
+
+  validateEventsHeadersForBackup_(eventsSheet);
+}
+
+/**
+ * Ensures the Events tab matches the expected backup structure.
+ *
+ * @param {GoogleAppsScript.Spreadsheet.Sheet} sheet
+ */
+function validateEventsHeadersForBackup_(sheet) {
+  const expectedHeaders = [
+    'row_id',
+    'event_id',
+    'calendar_id',
+    'title',
+    'description',
+    'location',
+    'start_time',
+    'end_time',
+    'all_day',
+    'status',
+    'created_at',
+    'updated_at',
+    'organizer',
+    'creator',
+    'attendees',
+    'raw_text',
+    'raw_json',
+    'restore_ready',
+    'restore_status',
+    'notes'
+  ];
+
+  const actualHeaders = sheet
+    .getRange(1, 1, 1, expectedHeaders.length)
+    .getValues()[0]
+    .map(function (value) {
+      return String(value || '').trim();
+    });
+
+  const mismatches = [];
+
+  expectedHeaders.forEach(function (header, index) {
+    if (actualHeaders[index] !== header) {
+      mismatches.push(
+        'column ' + (index + 1) + ': expected "' + header + '" but found "' + actualHeaders[index] + '"'
+      );
+    }
+  });
+
+  if (mismatches.length > 0) {
+    throw new Error('Events tab headers are invalid for historical backup. ' + mismatches.join('; '));
+  }
+}
+
+
+/* ============================================================================
+ * FETCH
+ * ========================================================================== */
+
+/**
+ * Fetches historical events using the Advanced Calendar API.
+ *
+ * Notes:
+ * - singleEvents = expand_recurring
+ * - showDeleted = include_cancelled
+ *
+ * @param {string} calendarId
+ * @param {Date} timeMin
+ * @param {Date} timeMax
+ * @param {Object} options
+ * @param {boolean} options.includeCancelled
+ * @param {boolean} options.expandRecurring
+ * @returns {{items: Object[], pageCount: number}}
+ */
+function fetchHistoricalEvents_(calendarId, timeMin, timeMax, options) {
+  const items = [];
+  let pageToken = '';
+  let pageCount = 0;
+
+  do {
+    const response = Calendar.Events.list(calendarId, {
+      timeMin: timeMin.toISOString(),
+      timeMax: timeMax.toISOString(),
+      singleEvents: options.expandRecurring,
+      showDeleted: options.includeCancelled,
+      maxResults: 2500,
+      pageToken: pageToken || undefined
+    });
+
+    const pageItems = response.items || [];
+    pageItems.forEach(function (item) {
+      items.push(item);
+    });
+
+    pageToken = response.nextPageToken || '';
+    pageCount += 1;
+  } while (pageToken);
+
+  return {
+    items: items,
+    pageCount: pageCount
+  };
+}
+
+
+/* ============================================================================
+ * UPSERT PLANNING
+ * ========================================================================== */
+
+/**
+ * Builds an index of existing Events rows so reruns update instead of duplicate.
+ *
+ * Key:
+ * event_id + "|" + normalized start value
+ *
+ * @param {GoogleAppsScript.Spreadsheet.Sheet} sheet
+ * @returns {Object}
+ */
+function buildExistingEventIndex_(sheet) {
+  const lastRow = sheet.getLastRow();
+  const lastColumn = sheet.getLastColumn();
+  const index = {};
+
+  if (lastRow < 2) {
+    return index;
+  }
+
+  const headers = sheet.getRange(1, 1, 1, lastColumn).getValues()[0];
+  const rows = sheet.getRange(2, 1, lastRow - 1, lastColumn).getValues();
+  const colMap = buildColumnMap_(headers);
+
+  rows.forEach(function (row, rowOffset) {
+    const eventId = safeString(row[colMap.event_id]);
+    const startValue = normalizeStoredStartValue_(row[colMap.start_time]);
+
+    if (!eventId || !startValue) {
+      return;
+    }
+
+    index[buildEventInstanceKey_(eventId, startValue)] = {
+      rowNumber: rowOffset + 2,
+      rowId: safeString(row[colMap.row_id]),
+      restoreStatus: safeString(row[colMap.restore_status]),
+      notes: safeString(row[colMap.notes])
+    };
+  });
+
+  return index;
+}
+
+/**
+ * Converts fetched API items into update rows and append rows.
+ *
+ * @param {Object[]} items
+ * @param {Object} existingIndex
+ * @param {string} sourceCalendarId
+ * @returns {{updateRows: Object[], appendRows: Object[]}}
+ */
+function buildHistoricalWritePlan_(items, existingIndex, sourceCalendarId) {
+  const updateRows = [];
+  const appendRows = [];
+
+  items.forEach(function (item) {
+    const mapped = mapCalendarItemToEventRow_(item, sourceCalendarId);
+    const key = buildEventInstanceKey_(mapped.event_id, mapped.start_time);
+    const existing = existingIndex[key];
+
+    if (existing) {
+      mapped.row_id = existing.rowId || mapped.row_id;
+      mapped.restore_status = existing.restoreStatus || mapped.restore_status;
+      mapped.notes = existing.notes || mapped.notes;
+
+      updateRows.push({
+        rowNumber: existing.rowNumber,
+        values: eventRowObjectToArray_(mapped)
+      });
+    } else {
+      appendRows.push(eventRowObjectToArray_(mapped));
+    }
+  });
+
+  return {
+    updateRows: updateRows,
+    appendRows: appendRows
+  };
+}
+
+
+/* ============================================================================
+ * WRITES
+ * ========================================================================== */
+
+/**
+ * Applies row updates and appends to the Events sheet.
+ *
+ * @param {GoogleAppsScript.Spreadsheet.Sheet} sheet
+ * @param {Object} plan
+ */
+function applyHistoricalWritePlan_(sheet, plan) {
+  plan.updateRows.forEach(function (update) {
+    sheet.getRange(update.rowNumber, 1, 1, update.values.length).setValues([update.values]);
+  });
+
+  if (plan.appendRows.length > 0) {
+    const startRow = sheet.getLastRow() + 1;
+    sheet.getRange(startRow, 1, plan.appendRows.length, plan.appendRows[0].length)
+      .setValues(plan.appendRows);
+  }
+}
+
+
+/* ============================================================================
+ * ROW MAPPING
+ * ========================================================================== */
+
+/**
+ * Maps one Calendar API event resource into the Events tab row object.
+ *
+ * @param {Object} item
+ * @param {string} sourceCalendarId
+ * @returns {Object}
+ */
+function mapCalendarItemToEventRow_(item, sourceCalendarId) {
+  const startValue = getEventStartValue_(item);
+  const endValue = getEventEndValue_(item);
+  const allDay = isAllDayEventResource_(item);
+  const attendeesText = formatAttendees_(item.attendees || []);
+  const rawText = buildReadableEventBackupText_(item, attendeesText, allDay, startValue, endValue);
+  const restoreReady = Boolean(startValue && endValue && item.status !== 'cancelled');
+
+  return {
+    row_id: generateRowId(),
+    event_id: safeString(item.id),
+    calendar_id: safeString(sourceCalendarId),
+    title: safeString(item.summary),
+    description: safeString(item.description),
+    location: safeString(item.location),
+    start_time: startValue,
+    end_time: endValue,
+    all_day: allDay,
+    status: safeString(item.status || 'confirmed'),
+    created_at: formatApiDateValue_(item.created),
+    updated_at: formatApiDateValue_(item.updated),
+    organizer: safeString(item.organizer && item.organizer.email),
+    creator: safeString(item.creator && item.creator.email),
+    attendees: attendeesText,
+    raw_text: rawText,
+    raw_json: JSON.stringify(item),
+    restore_ready: restoreReady,
+    restore_status: '',
+    notes: ''
+  };
+}
+
+/**
+ * Converts the row object into the exact Events tab column order.
+ *
+ * @param {Object} row
+ * @returns {Array}
+ */
+function eventRowObjectToArray_(row) {
+  return [
+    row.row_id,
+    row.event_id,
+    row.calendar_id,
+    row.title,
+    row.description,
+    row.location,
+    row.start_time,
+    row.end_time,
+    row.all_day,
+    row.status,
+    row.created_at,
+    row.updated_at,
+    row.organizer,
+    row.creator,
+    row.attendees,
+    row.raw_text,
+    row.raw_json,
+    row.restore_ready,
+    row.restore_status,
+    row.notes
+  ];
+}
+
+
+/* ============================================================================
+ * EVENT VALUE HELPERS
+ * ========================================================================== */
+
+/**
+ * Returns true when the event is all-day.
+ *
+ * @param {Object} item
+ * @returns {boolean}
+ */
+function isAllDayEventResource_(item) {
+  return Boolean(item && item.start && item.start.date && !item.start.dateTime);
+}
+
+/**
+ * Returns normalized start value for storage.
+ * All-day events stay YYYY-MM-DD.
+ * Timed events become local formatted timestamps.
+ *
+ * @param {Object} item
+ * @returns {string}
+ */
+function getEventStartValue_(item) {
+  if (!item || !item.start) {
+    return '';
+  }
+
+  if (item.start.date) {
+    return safeString(item.start.date);
+  }
+
+  return formatApiDateValue_(item.start.dateTime);
+}
+
+/**
+ * Returns normalized end value for storage.
+ *
+ * @param {Object} item
+ * @returns {string}
+ */
+function getEventEndValue_(item) {
+  if (!item || !item.end) {
+    return '';
+  }
+
+  if (item.end.date) {
+    return safeString(item.end.date);
+  }
+
+  return formatApiDateValue_(item.end.dateTime);
+}
+
+/**
+ * Formats an API date or datetime string into the project's stored format.
+ *
+ * @param {string} value
+ * @returns {string}
+ */
+function formatApiDateValue_(value) {
+  if (!value) {
+    return '';
+  }
+
+  if (/^\d{4}-\d{2}-\d{2}$/.test(String(value))) {
+    return String(value);
+  }
+
+  return formatTimestamp(value);
+}
+
+/**
+ * Builds a user-readable backup block.
+ *
+ * @param {Object} item
+ * @param {string} attendeesText
+ * @param {boolean} allDay
+ * @param {string} startValue
+ * @param {string} endValue
+ * @returns {string}
+ */
+function buildReadableEventBackupText_(item, attendeesText, allDay, startValue, endValue) {
+  const parts = [
+    'Title: ' + safeString(item.summary),
+    'Description: ' + safeString(item.description),
+    'Location: ' + safeString(item.location),
+    'Start: ' + safeString(startValue),
+    'End: ' + safeString(endValue),
+    'All Day: ' + (allDay ? 'TRUE' : 'FALSE'),
+    'Status: ' + safeString(item.status || 'confirmed'),
+    'Organizer: ' + safeString(item.organizer && item.organizer.email),
+    'Creator: ' + safeString(item.creator && item.creator.email),
+    'Attendees: ' + safeString(attendeesText)
+  ];
+
+  return parts.join('\n');
+}
+
+/**
+ * Flattens attendee objects into a single readable cell.
+ *
+ * Format:
+ * name <email> | name <email>
+ *
+ * @param {Object[]} attendees
+ * @returns {string}
+ */
+function formatAttendees_(attendees) {
+  if (!attendees || attendees.length === 0) {
+    return '';
+  }
+
+  return attendees.map(function (attendee) {
+    const name = safeString(attendee.displayName);
+    const email = safeString(attendee.email);
+
+    if (name && email) {
+      return name + ' <' + email + '>';
+    }
+
+    return email || name || '';
+  }).filter(Boolean).join(' | ');
+}
+
+
+/* ============================================================================
+ * KEYING / INDEX HELPERS
+ * ========================================================================== */
+
+/**
+ * Builds a stable event-instance key.
+ *
+ * @param {string} eventId
+ * @param {string} startValue
+ * @returns {string}
+ */
+function buildEventInstanceKey_(eventId, startValue) {
+  return safeString(eventId) + '|' + safeString(startValue);
+}
+
+/**
+ * Normalizes a stored start_time cell value into a comparable string.
+ *
+ * @param {*} value
+ * @returns {string}
+ */
+function normalizeStoredStartValue_(value) {
+  if (!value) {
+    return '';
+  }
+
+  if (value instanceof Date) {
+    return formatTimestamp(value);
+  }
+
+  return String(value).trim();
+}
+
+/**
+ * Builds a header-name -> column-index map.
+ *
+ * @param {Array} headers
+ * @returns {Object}
+ */
+function buildColumnMap_(headers) {
+  const map = {};
+
+  headers.forEach(function (header, index) {
+    map[String(header || '').trim()] = index;
+  });
+
+  return map;
+}
+
+
+/* ============================================================================
+ * SUMMARY / CURSOR
+ * ========================================================================== */
+
+/**
+ * Determines the last_sync value after a historical run.
+ *
+ * Uses the newest updated timestamp found in the fetched items.
+ * Falls back to now if no items were returned.
+ *
+ * @param {Object[]} items
+ * @returns {string}
+ */
+function determineHistoricalLastSync_(items) {
+  if (!items || items.length === 0) {
+    return formatTimestamp(new Date());
+  }
+
+  let newest = null;
+
+  items.forEach(function (item) {
+    if (!item.updated) {
+      return;
+    }
+
+    const updated = new Date(item.updated);
+    if (isNaN(updated.getTime())) {
+      return;
+    }
+
+    if (!newest || updated.getTime() > newest.getTime()) {
+      newest = updated;
+    }
+  });
+
+  return newest ? formatTimestamp(newest) : formatTimestamp(new Date());
+}
+
+/**
+ * Builds the plain-English summary written to Config and Log.
+ *
+ * @param {Object} result
+ * @returns {string}
+ */
+function buildHistoricalBackupSummary_(result) {
+  return [
+    'Historical backup complete',
+    'calendar=' + result.sourceCalendarId,
+    'range=' + formatTimestamp(result.rangeStart) + ' to ' + formatTimestamp(result.rangeEnd),
+    'fetched=' + result.fetchedCount,
+    'inserted=' + result.insertedCount,
+    'updated=' + result.updatedCount,
+    'pages=' + result.pageCount,
+    'include_cancelled=' + (result.includeCancelled ? 'TRUE' : 'FALSE'),
+    'expand_recurring=' + (result.expandRecurring ? 'TRUE' : 'FALSE'),
+    'last_sync=' + result.lastSync
+  ].join(' | ');
+}
+
+
+/* ============================================================================
+ * DATE HELPERS
+ * ========================================================================== */
+
+/**
+ * Converts a value into a valid Date or throws a readable error.
+ *
+ * Kept local here so this file can run independently even if validation helpers
+ * are not reused directly.
+ *
+ * @param {*} value
+ * @param {string} fieldName
+ * @returns {Date}
+ */
+function asDateOrThrow_(value, fieldName) {
+  const date = value instanceof Date ? value : new Date(value);
+
+  if (isNaN(date.getTime())) {
+    throw new Error('Config.' + fieldName + ' is not a valid date.');
+  }
+
+  return date;
+}
+
+/**
+ * Returns the end of the supplied date in local script time.
+ *
+ * @param {Date} date
+ * @returns {Date}
+ */
+function endOfDay_(date) {
+  const result = new Date(date);
+  result.setHours(23, 59, 59, 999);
+  return result;
+}
+
+
+########################################################################
+FILE: IncrementalBackup.gs.gs
+########################################################################
+
+/**
+ * IncrementalBackup.gs
+ *
+ * Purpose:
+ * Performs an incremental calendar sync from the source calendar into the
+ * Events tab using Config.last_sync as the update cursor.
+ *
+ * Design:
+ * - reads last_sync from Config
+ * - fetches only events updated since last_sync
+ * - upserts rows into Events so reruns do not duplicate data
+ * - preserves both readable text and raw JSON
+ * - advances last_sync after completion
+ *
+ * Depends on:
+ * - Helpers.gs
+ *   - APP
+ *   - getConfig()
+ *   - getProjectSheets()
+ *   - setConfigValues()
+ *   - logAction()
+ *   - generateRowId()
+ *   - runWithContext_()
+ *   - formatTimestamp()
+ *   - safeString()
+ *   - toBoolean()
+ *   - validateRequiredTabs()
+ *   - validateRequiredConfigKeys()
+ *
+ * Recommended prerequisite:
+ * - Enable Advanced Google Services > Calendar API
+ * - Enable Google Calendar API in the linked Cloud project
+ */
+
+
+/* ============================================================================
+ * PUBLIC BUTTON FUNCTION
+ * ========================================================================== */
+
+/**
+ * Button action:
+ * Run an incremental sync from Config.last_sync forward.
+ */
+function runIncrementalBackup() {
+  runWithContext_('incremental_backup', function (runId, config) {
+    validateRequiredTabs();
+    validateRequiredConfigKeys();
+
+    const sheets = getProjectSheets();
+    validateIncrementalBackupPrerequisites_(sheets.events, config);
+
+    const sourceCalendarId = safeString(config.source_calendar_id).trim();
+    const includeCancelled = toBoolean(config.include_cancelled);
+    const expandRecurring = toBoolean(config.expand_recurring);
+
+    const updatedMin = incrementalAsDateOrThrow_(config.last_sync, 'last_sync');
+    const fetchStartedAt = new Date();
+
+    const existingIndex = buildIncrementalExistingEventIndex_(sheets.events);
+    const fetched = fetchIncrementalEvents_(
+      sourceCalendarId,
+      updatedMin,
+      {
+        includeCancelled: includeCancelled,
+        expandRecurring: expandRecurring
+      }
+    );
+
+    const writePlan = buildIncrementalWritePlan_(
+      fetched.items,
+      existingIndex,
+      sourceCalendarId
+    );
+
+    applyIncrementalWritePlan_(sheets.events, writePlan);
+
+    const nextLastSync = determineIncrementalLastSync_(
+      fetched.items,
+      fetchStartedAt,
+      updatedMin
+    );
+
+    const summary = buildIncrementalBackupSummary_({
+      sourceCalendarId: sourceCalendarId,
+      updatedMin: updatedMin,
+      fetchedCount: fetched.items.length,
+      insertedCount: writePlan.appendRows.length,
+      updatedCount: writePlan.updateRows.length,
+      pageCount: fetched.pageCount,
+      includeCancelled: includeCancelled,
+      expandRecurring: expandRecurring,
+      lastSync: nextLastSync
+    });
+
+    setConfigValues({
+      last_sync: nextLastSync,
+      last_run_status: 'Success',
+      last_run_summary: summary,
+      last_error: '',
+      system_status: APP.STATUS.READY
+    });
+
+    logAction({
+      action: 'incremental_backup',
+      status: APP.LOG_STATUS.SUCCESS,
+      detail: summary,
+      runId: runId
+    });
+
+    SpreadsheetApp.getUi().alert(
+      'Incremental backup complete.\n\n' + summary
+    );
+  });
+}
+
+
+/* ============================================================================
+ * PRECHECKS
+ * ========================================================================== */
+
+/**
+ * Validates that incremental backup has what it needs before fetching data.
+ *
+ * @param {GoogleAppsScript.Spreadsheet.Sheet} eventsSheet
+ * @param {Object} config
+ */
+function validateIncrementalBackupPrerequisites_(eventsSheet, config) {
+  if (typeof Calendar === 'undefined' || !Calendar.Events || !Calendar.Events.list) {
+    throw new Error(
+      'Advanced Calendar service is not enabled. Enable the Calendar API in Apps Script advanced services before running incremental backup.'
+    );
+  }
+
+  if (!config.source_calendar_id) {
+    throw new Error('Config.source_calendar_id is required for incremental backup.');
+  }
+
+  if (!config.last_sync) {
+    throw new Error(
+      'Config.last_sync is required for incremental backup. Run historical backup first so incremental backup has a starting cursor.'
+    );
+  }
+
+  validateEventsHeadersForIncrementalBackup_(eventsSheet);
+}
+
+/**
+ * Ensures the Events tab matches the expected backup structure.
+ *
+ * @param {GoogleAppsScript.Spreadsheet.Sheet} sheet
+ */
+function validateEventsHeadersForIncrementalBackup_(sheet) {
+  const expectedHeaders = [
+    'row_id',
+    'event_id',
+    'calendar_id',
+    'title',
+    'description',
+    'location',
+    'start_time',
+    'end_time',
+    'all_day',
+    'status',
+    'created_at',
+    'updated_at',
+    'organizer',
+    'creator',
+    'attendees',
+    'raw_text',
+    'raw_json',
+    'restore_ready',
+    'restore_status',
+    'notes'
+  ];
+
+  const actualHeaders = sheet
+    .getRange(1, 1, 1, expectedHeaders.length)
+    .getValues()[0]
+    .map(function (value) {
+      return String(value || '').trim();
+    });
+
+  const mismatches = [];
+
+  expectedHeaders.forEach(function (header, index) {
+    if (actualHeaders[index] !== header) {
+      mismatches.push(
+        'column ' + (index + 1) + ': expected "' + header + '" but found "' + actualHeaders[index] + '"'
+      );
+    }
+  });
+
+  if (mismatches.length > 0) {
+    throw new Error(
+      'Events tab headers are invalid for incremental backup. ' + mismatches.join('; ')
+    );
+  }
+}
+
+
+/* ============================================================================
+ * FETCH
+ * ========================================================================== */
+
+/**
+ * Fetches events updated since the provided cursor using the Advanced Calendar API.
+ *
+ * Notes:
+ * - updatedMin drives incremental sync
+ * - singleEvents = expand_recurring
+ * - showDeleted = include_cancelled
+ * - orderBy is omitted because it is not valid together with updatedMin
+ *
+ * @param {string} calendarId
+ * @param {Date} updatedMin
+ * @param {Object} options
+ * @param {boolean} options.includeCancelled
+ * @param {boolean} options.expandRecurring
+ * @returns {{items: Object[], pageCount: number}}
+ */
+function fetchIncrementalEvents_(calendarId, updatedMin, options) {
+  const items = [];
+  let pageToken = '';
+  let pageCount = 0;
+
+  do {
+    const response = Calendar.Events.list(calendarId, {
+      updatedMin: updatedMin.toISOString(),
+      singleEvents: options.expandRecurring,
+      showDeleted: options.includeCancelled,
+      maxResults: 2500,
+      pageToken: pageToken || undefined
+    });
+
+    const pageItems = response.items || [];
+    pageItems.forEach(function (item) {
+      items.push(item);
+    });
+
+    pageToken = response.nextPageToken || '';
+    pageCount += 1;
+  } while (pageToken);
+
+  return {
+    items: items,
+    pageCount: pageCount
+  };
+}
+
+
+/* ============================================================================
+ * UPSERT PLANNING
+ * ========================================================================== */
+
+/**
+ * Builds an index of existing Events rows so reruns update instead of duplicate.
+ *
+ * Key:
+ * event_id + "|" + normalized start value
+ *
+ * @param {GoogleAppsScript.Spreadsheet.Sheet} sheet
+ * @returns {Object}
+ */
+function buildIncrementalExistingEventIndex_(sheet) {
+  const lastRow = sheet.getLastRow();
+  const lastColumn = sheet.getLastColumn();
+  const index = {};
+
+  if (lastRow < 2) {
+    return index;
+  }
+
+  const headers = sheet.getRange(1, 1, 1, lastColumn).getValues()[0];
+  const rows = sheet.getRange(2, 1, lastRow - 1, lastColumn).getValues();
+  const colMap = buildIncrementalColumnMap_(headers);
+
+  rows.forEach(function (row, rowOffset) {
+    const eventId = safeString(row[colMap.event_id]);
+    const startValue = normalizeIncrementalStoredStartValue_(row[colMap.start_time]);
+
+    if (!eventId || !startValue) {
+      return;
+    }
+
+    index[buildIncrementalEventInstanceKey_(eventId, startValue)] = {
+      rowNumber: rowOffset + 2,
+      rowId: safeString(row[colMap.row_id]),
+      restoreStatus: safeString(row[colMap.restore_status]),
+      notes: safeString(row[colMap.notes])
+    };
+  });
+
+  return index;
+}
+
+/**
+ * Converts fetched API items into update rows and append rows.
+ *
+ * @param {Object[]} items
+ * @param {Object} existingIndex
+ * @param {string} sourceCalendarId
+ * @returns {{updateRows: Object[], appendRows: Object[]}}
+ */
+function buildIncrementalWritePlan_(items, existingIndex, sourceCalendarId) {
+  const updateRows = [];
+  const appendRows = [];
+
+  items.forEach(function (item) {
+    const mapped = mapIncrementalCalendarItemToEventRow_(item, sourceCalendarId);
+    const key = buildIncrementalEventInstanceKey_(mapped.event_id, mapped.start_time);
+    const existing = existingIndex[key];
+
+    if (existing) {
+      mapped.row_id = existing.rowId || mapped.row_id;
+      mapped.restore_status = existing.restoreStatus || mapped.restore_status;
+      mapped.notes = existing.notes || mapped.notes;
+
+      updateRows.push({
+        rowNumber: existing.rowNumber,
+        values: incrementalEventRowObjectToArray_(mapped)
+      });
+    } else {
+      appendRows.push(incrementalEventRowObjectToArray_(mapped));
+    }
+  });
+
+  return {
+    updateRows: updateRows,
+    appendRows: appendRows
+  };
+}
+
+
+/* ============================================================================
+ * WRITES
+ * ========================================================================== */
+
+/**
+ * Applies row updates and appends to the Events sheet.
+ *
+ * @param {GoogleAppsScript.Spreadsheet.Sheet} sheet
+ * @param {Object} plan
+ */
+function applyIncrementalWritePlan_(sheet, plan) {
+  plan.updateRows.forEach(function (update) {
+    sheet.getRange(update.rowNumber, 1, 1, update.values.length).setValues([update.values]);
+  });
+
+  if (plan.appendRows.length > 0) {
+    const startRow = sheet.getLastRow() + 1;
+    sheet.getRange(startRow, 1, plan.appendRows.length, plan.appendRows[0].length)
+      .setValues(plan.appendRows);
+  }
+}
+
+
+/* ============================================================================
+ * ROW MAPPING
+ * ========================================================================== */
+
+/**
+ * Maps one Calendar API event resource into the Events tab row object.
+ *
+ * @param {Object} item
+ * @param {string} sourceCalendarId
+ * @returns {Object}
+ */
+function mapIncrementalCalendarItemToEventRow_(item, sourceCalendarId) {
+  const startValue = getIncrementalEventStartValue_(item);
+  const endValue = getIncrementalEventEndValue_(item);
+  const allDay = isIncrementalAllDayEventResource_(item);
+  const attendeesText = formatIncrementalAttendees_(item.attendees || []);
+  const rawText = buildIncrementalReadableEventBackupText_(
+    item,
+    attendeesText,
+    allDay,
+    startValue,
+    endValue
+  );
+  const restoreReady = Boolean(startValue && endValue && item.status !== 'cancelled');
+
+  return {
+    row_id: generateRowId(),
+    event_id: safeString(item.id),
+    calendar_id: safeString(sourceCalendarId),
+    title: safeString(item.summary),
+    description: safeString(item.description),
+    location: safeString(item.location),
+    start_time: startValue,
+    end_time: endValue,
+    all_day: allDay,
+    status: safeString(item.status || 'confirmed'),
+    created_at: formatIncrementalApiDateValue_(item.created),
+    updated_at: formatIncrementalApiDateValue_(item.updated),
+    organizer: safeString(item.organizer && item.organizer.email),
+    creator: safeString(item.creator && item.creator.email),
+    attendees: attendeesText,
+    raw_text: rawText,
+    raw_json: JSON.stringify(item),
+    restore_ready: restoreReady,
+    restore_status: '',
+    notes: ''
+  };
+}
+
+/**
+ * Converts the row object into the exact Events tab column order.
+ *
+ * @param {Object} row
+ * @returns {Array}
+ */
+function incrementalEventRowObjectToArray_(row) {
+  return [
+    row.row_id,
+    row.event_id,
+    row.calendar_id,
+    row.title,
+    row.description,
+    row.location,
+    row.start_time,
+    row.end_time,
+    row.all_day,
+    row.status,
+    row.created_at,
+    row.updated_at,
+    row.organizer,
+    row.creator,
+    row.attendees,
+    row.raw_text,
+    row.raw_json,
+    row.restore_ready,
+    row.restore_status,
+    row.notes
+  ];
+}
+
+
+/* ============================================================================
+ * EVENT VALUE HELPERS
+ * ========================================================================== */
+
+/**
+ * Returns true when the event is all-day.
+ *
+ * @param {Object} item
+ * @returns {boolean}
+ */
+function isIncrementalAllDayEventResource_(item) {
+  return Boolean(item && item.start && item.start.date && !item.start.dateTime);
+}
+
+/**
+ * Returns normalized start value for storage.
+ * All-day events stay YYYY-MM-DD.
+ * Timed events become local formatted timestamps.
+ *
+ * @param {Object} item
+ * @returns {string}
+ */
+function getIncrementalEventStartValue_(item) {
+  if (!item || !item.start) {
+    return '';
+  }
+
+  if (item.start.date) {
+    return safeString(item.start.date);
+  }
+
+  return formatIncrementalApiDateValue_(item.start.dateTime);
+}
+
+/**
+ * Returns normalized end value for storage.
+ *
+ * @param {Object} item
+ * @returns {string}
+ */
+function getIncrementalEventEndValue_(item) {
+  if (!item || !item.end) {
+    return '';
+  }
+
+  if (item.end.date) {
+    return safeString(item.end.date);
+  }
+
+  return formatIncrementalApiDateValue_(item.end.dateTime);
+}
+
+/**
+ * Formats an API date or datetime string into the project's stored format.
+ *
+ * @param {string} value
+ * @returns {string}
+ */
+function formatIncrementalApiDateValue_(value) {
+  if (!value) {
+    return '';
+  }
+
+  if (/^\d{4}-\d{2}-\d{2}$/.test(String(value))) {
+    return String(value);
+  }
+
+  return formatTimestamp(value);
+}
+
+/**
+ * Builds a user-readable backup block.
+ *
+ * @param {Object} item
+ * @param {string} attendeesText
+ * @param {boolean} allDay
+ * @param {string} startValue
+ * @param {string} endValue
+ * @returns {string}
+ */
+function buildIncrementalReadableEventBackupText_(item, attendeesText, allDay, startValue, endValue) {
+  const parts = [
+    'Title: ' + safeString(item.summary),
+    'Description: ' + safeString(item.description),
+    'Location: ' + safeString(item.location),
+    'Start: ' + safeString(startValue),
+    'End: ' + safeString(endValue),
+    'All Day: ' + (allDay ? 'TRUE' : 'FALSE'),
+    'Status: ' + safeString(item.status || 'confirmed'),
+    'Organizer: ' + safeString(item.organizer && item.organizer.email),
+    'Creator: ' + safeString(item.creator && item.creator.email),
+    'Attendees: ' + safeString(attendeesText)
+  ];
+
+  return parts.join('\n');
+}
+
+/**
+ * Flattens attendee objects into a single readable cell.
+ *
+ * Format:
+ * name <email> | name <email>
+ *
+ * @param {Object[]} attendees
+ * @returns {string}
+ */
+function formatIncrementalAttendees_(attendees) {
+  if (!attendees || attendees.length === 0) {
+    return '';
+  }
+
+  return attendees.map(function (attendee) {
+    const name = safeString(attendee.displayName);
+    const email = safeString(attendee.email);
+
+    if (name && email) {
+      return name + ' <' + email + '>';
+    }
+
+    return email || name || '';
+  }).filter(Boolean).join(' | ');
+}
+
+
+/* ============================================================================
+ * KEYING / INDEX HELPERS
+ * ========================================================================== */
+
+/**
+ * Builds a stable event-instance key.
+ *
+ * @param {string} eventId
+ * @param {string} startValue
+ * @returns {string}
+ */
+function buildIncrementalEventInstanceKey_(eventId, startValue) {
+  return safeString(eventId) + '|' + safeString(startValue);
+}
+
+/**
+ * Normalizes a stored start_time cell value into a comparable string.
+ *
+ * @param {*} value
+ * @returns {string}
+ */
+function normalizeIncrementalStoredStartValue_(value) {
+  if (!value) {
+    return '';
+  }
+
+  if (value instanceof Date) {
+    return formatTimestamp(value);
+  }
+
+  return String(value).trim();
+}
+
+/**
+ * Builds a header-name -> column-index map.
+ *
+ * @param {Array} headers
+ * @returns {Object}
+ */
+function buildIncrementalColumnMap_(headers) {
+  const map = {};
+
+  headers.forEach(function (header, index) {
+    map[String(header || '').trim()] = index;
+  });
+
+  return map;
+}
+
+
+/* ============================================================================
+ * SUMMARY / CURSOR
+ * ========================================================================== */
+
+/**
+ * Determines the next last_sync value after an incremental run.
+ *
+ * Uses the newest updated timestamp found in the fetched items.
+ * Falls back to the fetch start time when no items were returned so the cursor
+ * still advances.
+ *
+ * @param {Object[]} items
+ * @param {Date} fetchStartedAt
+ * @param {Date} previousCursor
+ * @returns {string}
+ */
+function determineIncrementalLastSync_(items, fetchStartedAt, previousCursor) {
+  let newest = null;
+
+  if (items && items.length > 0) {
+    items.forEach(function (item) {
+      if (!item.updated) {
+        return;
+      }
+
+      const updated = new Date(item.updated);
+      if (isNaN(updated.getTime())) {
+        return;
+      }
+
+      if (!newest || updated.getTime() > newest.getTime()) {
+        newest = updated;
+      }
+    });
+  }
+
+  if (newest) {
+    return formatTimestamp(newest);
+  }
+
+  if (fetchStartedAt && !isNaN(fetchStartedAt.getTime())) {
+    return formatTimestamp(fetchStartedAt);
+  }
+
+  return formatTimestamp(previousCursor || new Date());
+}
+
+/**
+ * Builds the plain-English summary written to Config and Log.
+ *
+ * @param {Object} result
+ * @returns {string}
+ */
+function buildIncrementalBackupSummary_(result) {
+  return [
+    'Incremental backup complete',
+    'calendar=' + result.sourceCalendarId,
+    'updated_min=' + formatTimestamp(result.updatedMin),
+    'fetched=' + result.fetchedCount,
+    'inserted=' + result.insertedCount,
+    'updated=' + result.updatedCount,
+    'pages=' + result.pageCount,
+    'include_cancelled=' + (result.includeCancelled ? 'TRUE' : 'FALSE'),
+    'expand_recurring=' + (result.expandRecurring ? 'TRUE' : 'FALSE'),
+    'last_sync=' + result.lastSync
+  ].join(' | ');
+}
+
+
+/* ============================================================================
+ * DATE HELPERS
+ * ========================================================================== */
+
+/**
+ * Converts a value into a valid Date or throws a readable error.
+ *
+ * Kept local here with a unique name so it does not collide with helpers
+ * defined in other script files.
+ *
+ * @param {*} value
+ * @param {string} fieldName
+ * @returns {Date}
+ */
+function incrementalAsDateOrThrow_(value, fieldName) {
+  const date = value instanceof Date ? value : new Date(value);
+
+  if (isNaN(date.getTime())) {
+    throw new Error('Config.' + fieldName + ' is not a valid date.');
+  }
+
+  return date;
+}
+
+
+########################################################################
+FILE: LocateEvents.gs
+########################################################################
+
+/**
+ * LocateEvents.gs
+ *
+ * Purpose
+ * -------
+ * Validates and parses Export!Q:Q location values into address components,
+ * highlights valid/invalid source cells, and geocodes acceptable addresses
+ * into Export!V:W when coordinates are still blank.
+ *
+ * Important status rule
+ * ---------------------
+ * Only rows where F = "confirmed" are analyzed.
+ * Rows where F = "cancelled" are skipped entirely so they do not affect
+ * address validation or geocoding outcomes.
+ *
+ * Expected Export layout
+ * ----------------------
+ * F = status
+ * Q = location
+ * R = street_name_number
+ * S = city
+ * T = province
+ * U = postal_code
+ * V = latitude
+ * W = longitude
+ * X = notes
+ *
+ * Rules
+ * -----
+ * 1) Only confirmed rows are analyzed.
+ *
+ * 2) A confirmed location is considered acceptable only if it can be
+ *    segmented into:
+ *    - street_name_number
+ *    - city
+ *    - province
+ *    - postal_code
+ *
+ * 3) Confirmed valid Q cells are highlighted light green.
+ *    Confirmed invalid Q cells are highlighted light red.
+ *    Cancelled rows are highlighted light gray and skipped.
+ *
+ * 4) Parsed address components are written to R:U for confirmed valid rows.
+ *    Confirmed invalid rows have R:U cleared.
+ *    Cancelled rows have R:U cleared so they do not look active.
+ *
+ * 5) Geocoding runs only for rows that:
+ *    - are confirmed
+ *    - are valid
+ *    - have blank latitude AND blank longitude
+ *
+ * 6) Existing coordinates are preserved.
+ *
+ * 7) A centered modal summary is shown at the end and remains visible
+ *    until dismissed by the user.
+ */
+
+function locateEvents() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var ui = SpreadsheetApp.getUi();
+  var sheet = ss.getSheetByName('Export');
+
+  if (!sheet) {
+    ui.alert(
+      'Locate Events',
+      'Export tab not found.\n\nCreate a sheet named "Export" and try again.',
+      ui.ButtonSet.OK
+    );
+    throw new Error('Export tab not found. Create a sheet named "Export" and try again.');
+  }
+
+  var lastRow = sheet.getLastRow();
+  if (lastRow < 2) {
+    var emptySummary =
+      'Locate Events complete.\n\n' +
+      'No data rows were found in the Export tab.';
+    Logger.log(emptySummary);
+    ui.alert('Locate Events Summary', emptySummary, ui.ButtonSet.OK);
+
+    return {
+      processedRows: 0,
+      confirmedRows: 0,
+      cancelledRowsSkipped: 0,
+      otherStatusRowsSkipped: 0,
+      validAddresses: 0,
+      invalidAddresses: 0,
+      geocoded: 0,
+      skippedExistingCoordinates: 0,
+      failedGeocodes: 0,
+      summary: emptySummary
+    };
+  }
+
+  // Column constants
+  var COL_STATUS = 6;      // F
+  var COL_LOCATION = 17;   // Q
+  var COL_STREET = 18;     // R
+  var COL_CITY = 19;       // S
+  var COL_PROVINCE = 20;   // T
+  var COL_POSTAL = 21;     // U
+  var COL_LAT = 22;        // V
+  var COL_LNG = 23;        // W
+  var COL_NOTES = 24;      // X
+
+  var numRows = lastRow - 1;
+
+  var statusValues = sheet.getRange(2, COL_STATUS, numRows, 1).getValues();
+  var locationValues = sheet.getRange(2, COL_LOCATION, numRows, 1).getValues();
+  var componentValues = sheet.getRange(2, COL_STREET, numRows, 4).getValues();
+  var coordinateValues = sheet.getRange(2, COL_LAT, numRows, 2).getValues();
+  var locationBackgrounds = sheet.getRange(2, COL_LOCATION, numRows, 1).getBackgrounds();
+  var componentBackgrounds = sheet.getRange(2, COL_STREET, numRows, 4).getBackgrounds();
+
+  var LIGHT_GREEN = '#d9ead3';
+  var LIGHT_RED = '#f4cccc';
+  var LIGHT_GRAY = '#e6e6e6';
+  var WHITE = '#ffffff';
+
+  var geocoder = Maps.newGeocoder();
+
+  var processedRows = 0;
+  var confirmedRows = 0;
+  var cancelledRowsSkipped = 0;
+  var otherStatusRowsSkipped = 0;
+  var validAddresses = 0;
+  var invalidAddresses = 0;
+  var geocodedCount = 0;
+  var skippedExistingCoordinates = 0;
+  var failedGeocodes = 0;
+
+  for (var i = 0; i < numRows; i++) {
+    var rowNumber = i + 2;
+    var status = normalizeStatus_(statusValues[i][0]);
+    var rawLocation = String(locationValues[i][0] || '').trim();
+    var existingLat = coordinateValues[i][0];
+    var existingLng = coordinateValues[i][1];
+
+    processedRows++;
+
+    // Skip cancelled rows entirely.
+    if (status === 'cancelled') {
+      cancelledRowsSkipped++;
+
+      componentValues[i][0] = '';
+      componentValues[i][1] = '';
+      componentValues[i][2] = '';
+      componentValues[i][3] = '';
+
+      locationBackgrounds[i][0] = LIGHT_GRAY;
+      for (var a = 0; a < 4; a++) {
+        componentBackgrounds[i][a] = WHITE;
+      }
+      continue;
+    }
+
+    // Skip anything that is not confirmed.
+    if (status !== 'confirmed') {
+      otherStatusRowsSkipped++;
+
+      componentValues[i][0] = '';
+      componentValues[i][1] = '';
+      componentValues[i][2] = '';
+      componentValues[i][3] = '';
+
+      locationBackgrounds[i][0] = WHITE;
+      for (var b = 0; b < 4; b++) {
+        componentBackgrounds[i][b] = WHITE;
+      }
+      continue;
+    }
+
+    confirmedRows++;
+
+    if (rawLocation === '') {
+      invalidAddresses++;
+
+      componentValues[i][0] = '';
+      componentValues[i][1] = '';
+      componentValues[i][2] = '';
+      componentValues[i][3] = '';
+
+      locationBackgrounds[i][0] = LIGHT_RED;
+      for (var c = 0; c < 4; c++) {
+        componentBackgrounds[i][c] = WHITE;
+      }
+      continue;
+    }
+
+    var parsed = parseCanadianAddress_(rawLocation);
+
+    if (!parsed.isValid) {
+      invalidAddresses++;
+
+      componentValues[i][0] = '';
+      componentValues[i][1] = '';
+      componentValues[i][2] = '';
+      componentValues[i][3] = '';
+
+      locationBackgrounds[i][0] = LIGHT_RED;
+      for (var d = 0; d < 4; d++) {
+        componentBackgrounds[i][d] = WHITE;
+      }
+      continue;
+    }
+
+    validAddresses++;
+
+    componentValues[i][0] = parsed.street;
+    componentValues[i][1] = parsed.city;
+    componentValues[i][2] = parsed.province;
+    componentValues[i][3] = parsed.postalCode;
+
+    locationBackgrounds[i][0] = LIGHT_GREEN;
+    for (var e = 0; e < 4; e++) {
+      componentBackgrounds[i][e] = LIGHT_GREEN;
+    }
+
+    // Only geocode confirmed + valid rows with both coordinates blank.
+    var hasExistingCoordinates = !isBlankCell_(existingLat) || !isBlankCell_(existingLng);
+    if (hasExistingCoordinates) {
+      skippedExistingCoordinates++;
+      continue;
+    }
+
+    var geocodeAddress = [
+      parsed.street,
+      parsed.city,
+      parsed.province,
+      parsed.postalCode,
+      'Canada'
+    ].join(', ');
+
+    try {
+      var response = geocoder.geocode(geocodeAddress);
+
+      if (response && response.status === 'OK' && response.results && response.results.length > 0) {
+        var result = response.results[0];
+        var location = result.geometry && result.geometry.location;
+
+        if (location && location.lat != null && location.lng != null) {
+          coordinateValues[i][0] = location.lat;
+          coordinateValues[i][1] = location.lng;
+          geocodedCount++;
+        } else {
+          failedGeocodes++;
+        }
+      } else {
+        failedGeocodes++;
+      }
+    } catch (err) {
+      failedGeocodes++;
+      Logger.log('Geocode failed on row ' + rowNumber + ': ' + err);
+    }
+
+    Utilities.sleep(120);
+  }
+
+  // Batch writes
+  sheet.getRange(2, COL_STREET, numRows, 4).setValues(componentValues);
+  sheet.getRange(2, COL_LAT, numRows, 2).setValues(coordinateValues);
+  sheet.getRange(2, COL_LOCATION, numRows, 1).setBackgrounds(locationBackgrounds);
+  sheet.getRange(2, COL_STREET, numRows, 4).setBackgrounds(componentBackgrounds);
+
+  var summary =
+    'Locate Events complete.\n\n' +
+    'Total rows processed: ' + processedRows + '\n' +
+    'Confirmed rows analyzed: ' + confirmedRows + '\n' +
+    'Cancelled rows skipped: ' + cancelledRowsSkipped + '\n' +
+    'Other non-confirmed rows skipped: ' + otherStatusRowsSkipped + '\n' +
+    'Valid confirmed addresses: ' + validAddresses + '\n' +
+    'Invalid or incomplete confirmed addresses: ' + invalidAddresses + '\n' +
+    'New geocodes added: ' + geocodedCount + '\n' +
+    'Skipped because coordinates already existed: ' + skippedExistingCoordinates + '\n' +
+    'Geocode failures: ' + failedGeocodes;
+
+  Logger.log(summary);
+  ui.alert('Locate Events Summary', summary, ui.ButtonSet.OK);
+
+  return {
+    processedRows: processedRows,
+    confirmedRows: confirmedRows,
+    cancelledRowsSkipped: cancelledRowsSkipped,
+    otherStatusRowsSkipped: otherStatusRowsSkipped,
+    validAddresses: validAddresses,
+    invalidAddresses: invalidAddresses,
+    geocoded: geocodedCount,
+    skippedExistingCoordinates: skippedExistingCoordinates,
+    failedGeocodes: failedGeocodes,
+    summary: summary
+  };
+}
+
+
+/**
+ * Normalizes event status for consistent branching.
+ */
+function normalizeStatus_(value) {
+  return String(value || '').trim().toLowerCase();
+}
+
+
+/**
+ * Attempts to parse a Canadian-style address into:
+ * street, city, province, postalCode
+ *
+ * Accepts common shapes like:
+ * - 60 Kearney Dr, Ajax, Ontario, L1T 4N2
+ * - 60 Kearney Dr, Ajax, ON, L1T 4N2
+ * - 60 Kearney Dr, Ajax, ON L1T 4N2
+ * - 60 Kearney Dr, Ajax, Ontario, L1T 4N2, Canada
+ */
+function parseCanadianAddress_(raw) {
+  var normalized = normalizeWhitespace_(raw)
+    .replace(/\s+,/g, ',')
+    .replace(/,\s+/g, ', ')
+    .trim();
+
+  var parts = normalized.split(',')
+    .map(function(part) {
+      return normalizeWhitespace_(part);
+    })
+    .filter(function(part) {
+      return part !== '';
+    });
+
+  if (parts.length < 3) {
+    return invalidParse_('Not enough address segments.');
+  }
+
+  var lastPart = parts[parts.length - 1].toLowerCase();
+  if (lastPart === 'canada') {
+    parts.pop();
+  }
+
+  var street = '';
+  var city = '';
+  var province = '';
+  var postalCode = '';
+
+  if (parts.length >= 4) {
+    street = parts[0];
+    city = parts[1];
+    province = normalizeProvince_(parts[2]);
+    postalCode = normalizePostalCode_(parts[3]);
+  } else if (parts.length === 3) {
+    street = parts[0];
+    city = parts[1];
+
+    var provincePostal = extractProvinceAndPostal_(parts[2]);
+    province = provincePostal.province;
+    postalCode = provincePostal.postalCode;
+  } else {
+    return invalidParse_('Unsupported address shape.');
+  }
+
+  if (!isLikelyStreet_(street)) {
+    return invalidParse_('Street component is incomplete.');
+  }
+
+  if (!isLikelyCity_(city)) {
+    return invalidParse_('City component is incomplete.');
+  }
+
+  if (!province) {
+    return invalidParse_('Province component is invalid.');
+  }
+
+  if (!postalCode) {
+    return invalidParse_('Postal code component is invalid.');
+  }
+
+  return {
+    isValid: true,
+    street: street,
+    city: city,
+    province: province,
+    postalCode: postalCode
+  };
+}
+
+
+/**
+ * Extracts province + postal code from one combined segment.
+ * Example:
+ * "ON L1T 4N2"
+ * "Ontario L1T4N2"
+ */
+function extractProvinceAndPostal_(value) {
+  var text = normalizeWhitespace_(value);
+  var postalMatch = text.match(/[A-Za-z]\d[A-Za-z][ -]?\d[A-Za-z]\d/i);
+
+  if (!postalMatch) {
+    return { province: '', postalCode: '' };
+  }
+
+  var postalCode = normalizePostalCode_(postalMatch[0]);
+  var provinceText = normalizeWhitespace_(text.replace(postalMatch[0], '').trim());
+  var province = normalizeProvince_(provinceText);
+
+  return {
+    province: province,
+    postalCode: postalCode
+  };
+}
+
+
+/**
+ * Normalizes Canadian postal code to "A1A 1A1".
+ */
+function normalizePostalCode_(value) {
+  var raw = String(value || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+  if (!/^[A-Z]\d[A-Z]\d[A-Z]\d$/.test(raw)) {
+    return '';
+  }
+  return raw.slice(0, 3) + ' ' + raw.slice(3);
+}
+
+
+/**
+ * Returns a standardized province label when recognized.
+ */
+function normalizeProvince_(value) {
+  var raw = normalizeWhitespace_(String(value || '').toLowerCase()).replace(/\./g, '');
+
+  var provinceMap = {
+    'ab': 'Alberta',
+    'alberta': 'Alberta',
+    'bc': 'British Columbia',
+    'british columbia': 'British Columbia',
+    'mb': 'Manitoba',
+    'manitoba': 'Manitoba',
+    'nb': 'New Brunswick',
+    'new brunswick': 'New Brunswick',
+    'nl': 'Newfoundland and Labrador',
+    'newfoundland and labrador': 'Newfoundland and Labrador',
+    'ns': 'Nova Scotia',
+    'nova scotia': 'Nova Scotia',
+    'nt': 'Northwest Territories',
+    'northwest territories': 'Northwest Territories',
+    'nu': 'Nunavut',
+    'nunavut': 'Nunavut',
+    'on': 'Ontario',
+    'ontario': 'Ontario',
+    'pe': 'Prince Edward Island',
+    'pei': 'Prince Edward Island',
+    'prince edward island': 'Prince Edward Island',
+    'qc': 'Quebec',
+    'quebec': 'Quebec',
+    'sk': 'Saskatchewan',
+    'saskatchewan': 'Saskatchewan',
+    'yt': 'Yukon',
+    'yukon': 'Yukon'
+  };
+
+  return provinceMap[raw] || '';
+}
+
+
+/**
+ * Basic signal that a street segment is plausible.
+ */
+function isLikelyStreet_(value) {
+  var text = String(value || '').trim();
+  return /\d/.test(text) && /[A-Za-z]/.test(text) && text.length >= 5;
+}
+
+
+/**
+ * Basic signal that a city segment is plausible.
+ */
+function isLikelyCity_(value) {
+  var text = String(value || '').trim();
+  return /[A-Za-z]/.test(text) && text.length >= 2;
+}
+
+
+/**
+ * Collapses repeated whitespace.
+ */
+function normalizeWhitespace_(value) {
+  return String(value || '').replace(/\s+/g, ' ').trim();
+}
+
+
+/**
+ * Returns whether a cell should be treated as blank.
+ */
+function isBlankCell_(value) {
+  return value === '' || value === null || typeof value === 'undefined';
+}
+
+
+/**
+ * Helper for invalid parse responses.
+ */
+function invalidParse_(reason) {
+  return {
+    isValid: false,
+    reason: reason || 'Invalid address.'
+  };
+}
+
+
+########################################################################
+FILE: ParseEvents.gs
+########################################################################
+
+/**
+ * ParseEvents.gs
+ *
+ * Purpose
+ * -------
+ * Reads rows from the Events tab and populates the Export tab.
+ *
+ * Current scope
+ * -------------
+ * - Populates only Export columns A:Q
+ * - Leaves Export columns R:X untouched for later enrichment
+ * - Does NOT geocode
+ * - Does NOT depend on Config tab
+ * - Safe to run independently from the backend
+ *
+ * Export columns written by this script
+ * -------------------------------------
+ * A  export_row_id
+ * B  source_row_id
+ * C  event_id
+ * D  calendar_id
+ * E  title
+ * F  status
+ * G  all_day
+ * H  start_time
+ * I  end_time
+ * J  created_at
+ * K  updated_at
+ * L  organizer
+ * M  creator
+ * N  attendees
+ * O  attendee_count
+ * P  address_raw
+ * Q  location
+ *
+ * Assumptions
+ * -----------
+ * - Events row 1 contains headers
+ * - Export row 1 contains the finalized headers already discussed
+ * - Events contains at least the fields required below
+ */
+
+function parseEventsToExport() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var eventsSheet = ss.getSheetByName('Events');
+  var exportSheet = ss.getSheetByName('Export');
+
+  if (!eventsSheet) {
+    throw new Error('Events tab not found. Create a sheet named "Events" and try again.');
+  }
+
+  if (!exportSheet) {
+    exportSheet = ss.insertSheet('Export');
+  }
+
+  var EXPORT_HEADERS = [
+    'export_row_id',
+    'source_row_id',
+    'event_id',
+    'calendar_id',
+    'title',
+    'status',
+    'all_day',
+    'start_time',
+    'end_time',
+    'created_at',
+    'updated_at',
+    'organizer',
+    'creator',
+    'attendees',
+    'attendee_count',
+    'address_raw',
+    'location',
+    'street_name_number',
+    'city',
+    'province',
+    'postal_code',
+    'latitude',
+    'longitude',
+    'notes'
+  ];
+
+  ensureExportHeaders_(exportSheet, EXPORT_HEADERS);
+
+  var eventsData = eventsSheet.getDataRange().getValues();
+  if (eventsData.length < 2) {
+    clearExportBodyAtoQ_(exportSheet);
+    Logger.log('parseEventsToExport: No event rows found. Export body cleared.');
+    return;
+  }
+
+  var eventsHeaders = eventsData[0];
+  var eventsHeaderMap = buildHeaderMap_(eventsHeaders);
+
+  var requiredFields = [
+    'row_id',
+    'event_id',
+    'calendar_id',
+    'title',
+    'status',
+    'all_day',
+    'start_time',
+    'end_time',
+    'created_at',
+    'updated_at',
+    'organizer',
+    'creator',
+    'attendees',
+    'location'
+  ];
+
+  validateRequiredHeaders_(eventsHeaderMap, requiredFields, 'Events');
+
+  var output = [];
+  for (var r = 1; r < eventsData.length; r++) {
+    var row = eventsData[r];
+
+    if (isCompletelyBlankRow_(row)) {
+      continue;
+    }
+
+    var sourceRowId = getCellByHeader_(row, eventsHeaderMap, 'row_id');
+    var eventId = getCellByHeader_(row, eventsHeaderMap, 'event_id');
+    var calendarId = getCellByHeader_(row, eventsHeaderMap, 'calendar_id');
+    var title = getCellByHeader_(row, eventsHeaderMap, 'title');
+    var status = getCellByHeader_(row, eventsHeaderMap, 'status');
+    var allDay = getCellByHeader_(row, eventsHeaderMap, 'all_day');
+    var startTime = getCellByHeader_(row, eventsHeaderMap, 'start_time');
+    var endTime = getCellByHeader_(row, eventsHeaderMap, 'end_time');
+    var createdAt = getCellByHeader_(row, eventsHeaderMap, 'created_at');
+    var updatedAt = getCellByHeader_(row, eventsHeaderMap, 'updated_at');
+    var organizer = getCellByHeader_(row, eventsHeaderMap, 'organizer');
+    var creator = getCellByHeader_(row, eventsHeaderMap, 'creator');
+    var attendees = getCellByHeader_(row, eventsHeaderMap, 'attendees');
+    var location = getCellByHeader_(row, eventsHeaderMap, 'location');
+
+    var attendeeCount = countAttendees_(attendees);
+    var addressRaw = location || '';
+    var exportRowId = makeExportRowId_(sourceRowId, eventId, r);
+
+    output.push([
+      exportRowId,     // A export_row_id
+      sourceRowId,     // B source_row_id
+      eventId,         // C event_id
+      calendarId,      // D calendar_id
+      title,           // E title
+      status,          // F status
+      allDay,          // G all_day
+      startTime,       // H start_time
+      endTime,         // I end_time
+      createdAt,       // J created_at
+      updatedAt,       // K updated_at
+      organizer,       // L organizer
+      creator,         // M creator
+      attendees,       // N attendees
+      attendeeCount,   // O attendee_count
+      addressRaw,      // P address_raw
+      location         // Q location
+    ]);
+  }
+
+  writeExportBodyAtoQ_(exportSheet, output);
+
+  Logger.log(
+    'parseEventsToExport: Export complete. Wrote ' +
+      output.length +
+      ' row(s) from Events to Export (A:Q only).'
+  );
+}
+
+
+/**
+ * Ensures row 1 of Export matches the finalized A:X header layout.
+ * This protects the sheet structure and keeps R:X reserved for later scripts.
+ */
+function ensureExportHeaders_(sheet, headers) {
+  var existing = sheet.getRange(1, 1, 1, headers.length).getValues()[0];
+  var needsWrite = false;
+
+  for (var i = 0; i < headers.length; i++) {
+    if (String(existing[i] || '').trim() !== headers[i]) {
+      needsWrite = true;
+      break;
+    }
+  }
+
+  if (needsWrite) {
+    sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
+  }
+}
+
+
+/**
+ * Clears only Export body columns A:Q.
+ * Leaves row 1 headers intact and leaves R:X untouched.
+ */
+function clearExportBodyAtoQ_(sheet) {
+  var lastRow = sheet.getLastRow();
+  if (lastRow < 2) return;
+
+  sheet.getRange(2, 1, lastRow - 1, 17).clearContent();
+}
+
+
+/**
+ * Writes output rows into Export A:Q only.
+ * Existing body values in A:Q are cleared first.
+ * R:X are never touched.
+ */
+function writeExportBodyAtoQ_(sheet, rows) {
+  clearExportBodyAtoQ_(sheet);
+
+  if (!rows || rows.length === 0) {
+    return;
+  }
+
+  sheet.getRange(2, 1, rows.length, 17).setValues(rows);
+}
+
+
+/**
+ * Builds a header -> column index map from row 1.
+ */
+function buildHeaderMap_(headers) {
+  var map = {};
+  for (var i = 0; i < headers.length; i++) {
+    var key = normalizeHeader_(headers[i]);
+    if (key) {
+      map[key] = i;
+    }
+  }
+  return map;
+}
+
+
+/**
+ * Validates that required headers exist on the source sheet.
+ */
+function validateRequiredHeaders_(headerMap, requiredFields, sheetName) {
+  var missing = [];
+
+  for (var i = 0; i < requiredFields.length; i++) {
+    var field = requiredFields[i];
+    if (headerMap[field] === undefined) {
+      missing.push(field);
+    }
+  }
+
+  if (missing.length > 0) {
+    throw new Error(
+      sheetName +
+        ' is missing required header(s): ' +
+        missing.join(', ') +
+        '.'
+    );
+  }
+}
+
+
+/**
+ * Safely returns a cell value by header name.
+ */
+function getCellByHeader_(row, headerMap, headerName) {
+  var idx = headerMap[headerName];
+  if (idx === undefined) return '';
+  return row[idx];
+}
+
+
+/**
+ * Normalizes headers for flexible matching.
+ */
+function normalizeHeader_(value) {
+  return String(value || '')
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, '_');
+}
+
+
+/**
+ * Returns true if the row has no meaningful values.
+ */
+function isCompletelyBlankRow_(row) {
+  for (var i = 0; i < row.length; i++) {
+    if (String(row[i] || '').trim() !== '') {
+      return false;
+    }
+  }
+  return true;
+}
+
+
+/**
+ * Counts attendees from a pipe-delimited attendee string.
+ *
+ * Examples:
+ * "a@x.com | b@y.com" => 2
+ * "" => 0
+ */
+function countAttendees_(attendeesValue) {
+  var raw = String(attendeesValue || '').trim();
+  if (!raw) return 0;
+
+  return raw
+    .split('|')
+    .map(function(part) {
+      return part.trim();
+    })
+    .filter(function(part) {
+      return part !== '';
+    }).length;
+}
+
+
+/**
+ * Generates a stable-looking export row ID.
+ *
+ * Format:
+ * export_YYYYMMDD_<token>
+ *
+ * The token prefers source row identity where available.
+ */
+function makeExportRowId_(sourceRowId, eventId, rowNumber) {
+  var datePart = Utilities.formatDate(
+    new Date(),
+    Session.getScriptTimeZone(),
+    'yyyyMMdd'
+  );
+
+  var tokenSource = String(sourceRowId || eventId || ('row_' + rowNumber));
+  var cleaned = tokenSource.replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
+
+  if (!cleaned) {
+    cleaned = 'row' + rowNumber;
+  }
+
+  cleaned = cleaned.slice(0, 12);
+
+  return 'export_' + datePart + '_' + cleaned;
+}
+
+
+########################################################################
+FILE: PrepareRestore.gs
+########################################################################
+
+/**
+ * PrepareRestore.gs
+ *
+ * Purpose:
+ * Stages one restore request into the Restore tab based on a selected source
+ * row from the Events tab.
+ *
+ * Design:
+ * - reads selected_row_id or selected_event_id from Config
+ * - resolves exactly one source event row from Events
+ * - validates whether the source row is suitable for restore staging
+ * - appends one restore request row into Restore
+ * - updates the source Events row restore_status when successfully prepared
+ * - writes a plain-English summary to Config and Log
+ * - provides guided advisory responses when a restore cannot be staged
+ *
+ * Restore intent:
+ * - cancelled events ARE allowed to be prepared for restore
+ * - restore_ready=TRUE is the main safety gate
+ * - non-cancelled events are allowed, but warned, because they may create duplicates
+ *
+ * Depends on:
+ * - Helpers.gs
+ *   - APP
+ *   - getProjectSheets()
+ *   - setConfigValues()
+ *   - logAction()
+ *   - generateRestoreId()
+ *   - runWithContext_()
+ *   - safeString()
+ *   - toBoolean()
+ *   - validateRequiredTabs()
+ *   - validateRequiredConfigKeys()
+ *   - formatTimestamp()
+ */
+
+
+/* ============================================================================
+ * PUBLIC BUTTON FUNCTION
+ * ========================================================================== */
+
+/**
+ * Button action:
+ * Prepare a restore request from the selected event source row.
+ *
+ * Selection rules:
+ * - If Config.selected_row_id is present, use that first.
+ * - Otherwise use Config.selected_event_id.
+ * - If selected_event_id matches multiple rows, the user must use selected_row_id.
+ */
+function prepareRestore() {
+  runWithContext_('prepare_restore', function (runId, config) {
+    validateRequiredTabs();
+    validateRequiredConfigKeys();
+
+    const sheets = getProjectSheets();
+
+    if (!hasPrepareRestoreSelection_(config)) {
+      handleMissingPrepareRestoreSelection_(runId, config);
+      return;
+    }
+
+    validatePrepareRestorePrerequisites_(sheets.events, sheets.restore, config);
+
+    const sourceRecord = resolvePrepareRestoreSourceRecord_(sheets.events, config);
+    const validation = validatePrepareRestoreSourceData_(sourceRecord, config);
+
+    const restoreRow = buildPreparedRestoreRow_(sourceRecord, config, validation);
+    appendPreparedRestoreRow_(sheets.restore, restoreRow);
+
+    if (validation.isValid) {
+      updateSourceEventRestoreStatus_(sheets.events, sourceRecord.sheetRowNumber, 'prepared');
+    }
+
+    const summary = buildPrepareRestoreSummary_(sourceRecord, restoreRow, validation);
+    const uiMessage = buildPrepareRestoreAlertMessage_(sourceRecord, restoreRow, validation, config);
+
+    setConfigValues({
+      selected_row_id: sourceRecord.row.row_id,
+      selected_event_id: sourceRecord.row.event_id,
+      last_run_status: validation.isValid ? 'Success' : 'Action Needed',
+      last_run_summary: summary,
+      last_error: validation.isValid ? '' : validation.errors.join(' | '),
+      system_status: APP.STATUS.READY
+    });
+
+    logAction({
+      action: 'prepare_restore',
+      status: validation.isValid ? APP.LOG_STATUS.SUCCESS : APP.LOG_STATUS.ERROR,
+      detail: summary,
+      runId: runId,
+      eventId: sourceRecord.row.event_id,
+      restoreId: restoreRow.restore_id
+    });
+
+    if (validation.warnings.length > 0) {
+      validation.warnings.forEach(function (warning) {
+        logAction({
+          action: 'prepare_restore',
+          status: APP.LOG_STATUS.WARNING,
+          detail: warning,
+          runId: runId,
+          eventId: sourceRecord.row.event_id,
+          restoreId: restoreRow.restore_id
+        });
+      });
+    }
+
+    SpreadsheetApp.getUi().alert(uiMessage);
+
+    if (!validation.isValid) {
+      throw new Error(validation.errors.join(' | '));
+    }
+  });
+}
+
+
+/* ============================================================================
+ * ADVISORY FLOW
+ * ========================================================================== */
+
+/**
+ * Returns true when the user has provided a restore selector.
+ *
+ * @param {Object} config
+ * @returns {boolean}
+ */
+function hasPrepareRestoreSelection_(config) {
+  return Boolean(
+    safeString(config.selected_row_id).trim() ||
+    safeString(config.selected_event_id).trim()
+  );
+}
+
+/**
+ * Handles the case where the user has not selected any restore source yet.
+ * This is advisory, not a hard technical failure.
+ *
+ * @param {string} runId
+ * @param {Object} config
+ */
+function handleMissingPrepareRestoreSelection_(runId, config) {
+  const guidance = buildMissingPrepareRestoreSelectionMessage_(config);
+
+  setConfigValues({
+    last_run_status: 'Action Needed',
+    last_run_summary: 'Prepare restore is waiting for a source selection.',
+    last_error: guidance.shortMessage,
+    system_status: APP.STATUS.READY
+  });
+
+  logAction({
+    action: 'prepare_restore',
+    status: APP.LOG_STATUS.WARNING,
+    detail: guidance.logMessage,
+    runId: runId
+  });
+
+  SpreadsheetApp.getUi().alert(guidance.alertMessage);
+}
+
+/**
+ * Builds the user-facing advisory message for missing restore selection.
+ *
+ * @param {Object} config
+ * @returns {{shortMessage:string, logMessage:string, alertMessage:string}}
+ */
+function buildMissingPrepareRestoreSelectionMessage_(config) {
+  const targetCalendarId = safeString(config.target_calendar_id).trim();
+
+  const shortMessage =
+    'No restore source selected. Choose an Events row first, then set Config.selected_row_id or Config.selected_event_id.';
+
+  const logMessage = [
+    'Prepare restore did not run because no source event was selected.',
+    'Next step: go to the Events tab and choose the backup row you want to restore.',
+    'Then copy either the row_id into Config.selected_row_id or the event_id into Config.selected_event_id.',
+    'Preferred method: use selected_row_id because it identifies one exact row.',
+    targetCalendarId
+      ? 'Current target calendar: ' + targetCalendarId + '.'
+      : 'Config.target_calendar_id is blank and must be filled before restore can proceed.'
+  ].join(' ');
+
+  const alertMessage = [
+    'Prepare Restore could not start.',
+    '',
+    'Why it stopped:',
+    '- No source event has been selected yet.',
+    '',
+    'What to do:',
+    '1. Go to the Events tab.',
+    '2. Find the backup row you want to restore.',
+    '3. Copy that row\'s row_id into Config.selected_row_id.',
+    '   - You can use Config.selected_event_id instead, but only if there is exactly one matching row.',
+    '4. Confirm Config.target_calendar_id is filled in.',
+    '5. Run Prepare Restore again.',
+    '',
+    'Recommended:',
+    'Use selected_row_id whenever possible because it targets one exact backup row.'
+  ].join('\n');
+
+  return {
+    shortMessage: shortMessage,
+    logMessage: logMessage,
+    alertMessage: alertMessage
+  };
+}
+
+
+/* ============================================================================
+ * PRECHECKS
+ * ========================================================================== */
+
+/**
+ * Validates that prepare restore has what it needs before reading data.
+ *
+ * @param {GoogleAppsScript.Spreadsheet.Sheet} eventsSheet
+ * @param {GoogleAppsScript.Spreadsheet.Sheet} restoreSheet
+ * @param {Object} config
+ */
+function validatePrepareRestorePrerequisites_(eventsSheet, restoreSheet, config) {
+  if (!config.target_calendar_id) {
+    throw new Error('Config.target_calendar_id is required for prepare restore.');
+  }
+
+  if (!config.selected_row_id && !config.selected_event_id) {
+    throw new Error(
+      'No restore source selected. Choose an Events row first, then set Config.selected_row_id or Config.selected_event_id.'
+    );
+  }
+
+  validateEventsHeadersForPrepareRestore_(eventsSheet);
+  validateRestoreHeadersForPrepareRestore_(restoreSheet);
+}
+
+/**
+ * Ensures the Events tab matches the expected structure.
+ *
+ * @param {GoogleAppsScript.Spreadsheet.Sheet} sheet
+ */
+function validateEventsHeadersForPrepareRestore_(sheet) {
+  const expectedHeaders = [
+    'row_id',
+    'event_id',
+    'calendar_id',
+    'title',
+    'description',
+    'location',
+    'start_time',
+    'end_time',
+    'all_day',
+    'status',
+    'created_at',
+    'updated_at',
+    'organizer',
+    'creator',
+    'attendees',
+    'raw_text',
+    'raw_json',
+    'restore_ready',
+    'restore_status',
+    'notes'
+  ];
+
+  validatePrepareRestoreHeaders_(sheet, expectedHeaders, 'Events');
+}
+
+/**
+ * Ensures the Restore tab matches the expected structure.
+ *
+ * @param {GoogleAppsScript.Spreadsheet.Sheet} sheet
+ */
+function validateRestoreHeadersForPrepareRestore_(sheet) {
+  const expectedHeaders = [
+    'restore_id',
+    'source_row_id',
+    'source_event_id',
+    'target_calendar_id',
+    'restore_mode',
+    'title',
+    'description',
+    'location',
+    'start_time',
+    'end_time',
+    'all_day',
+    'attendees',
+    'validation_status',
+    'execution_status',
+    'restored_event_id',
+    'executed_at',
+    'notes'
+  ];
+
+  validatePrepareRestoreHeaders_(sheet, expectedHeaders, 'Restore');
+}
+
+/**
+ * Shared ordered-header validator.
+ *
+ * @param {GoogleAppsScript.Spreadsheet.Sheet} sheet
+ * @param {string[]} expectedHeaders
+ * @param {string} label
+ */
+function validatePrepareRestoreHeaders_(sheet, expectedHeaders, label) {
+  const actualHeaders = sheet
+    .getRange(1, 1, 1, expectedHeaders.length)
+    .getValues()[0]
+    .map(function (value) {
+      return String(value || '').trim();
+    });
+
+  const mismatches = [];
+
+  expectedHeaders.forEach(function (header, index) {
+    if (actualHeaders[index] !== header) {
+      mismatches.push(
+        'column ' + (index + 1) + ': expected "' + header + '" but found "' + actualHeaders[index] + '"'
+      );
+    }
+  });
+
+  if (mismatches.length > 0) {
+    throw new Error(label + ' tab headers are invalid for prepare restore. ' + mismatches.join('; '));
+  }
+}
+
+
+/* ============================================================================
+ * SOURCE RESOLUTION
+ * ========================================================================== */
+
+/**
+ * Resolves the selected source event row from Events.
+ *
+ * Selection priority:
+ * 1. selected_row_id
+ * 2. selected_event_id
+ *
+ * @param {GoogleAppsScript.Spreadsheet.Sheet} eventsSheet
+ * @param {Object} config
+ * @returns {{sheetRowNumber:number, row:Object, columnMap:Object}}
+ */
+function resolvePrepareRestoreSourceRecord_(eventsSheet, config) {
+  const data = readPrepareRestoreEventsSheet_(eventsSheet);
+  const selectedRowId = safeString(config.selected_row_id).trim();
+  const selectedEventId = safeString(config.selected_event_id).trim();
+
+  if (selectedRowId) {
+    const rowMatch = data.records.filter(function (record) {
+      return safeString(record.row.row_id) === selectedRowId;
+    });
+
+    if (rowMatch.length === 0) {
+      throw new Error('No Events row found for selected_row_id=' + selectedRowId);
+    }
+
+    return rowMatch[0];
+  }
+
+  const eventMatches = data.records.filter(function (record) {
+    return safeString(record.row.event_id) === selectedEventId;
+  });
+
+  if (eventMatches.length === 0) {
+    throw new Error('No Events row found for selected_event_id=' + selectedEventId);
+  }
+
+  if (eventMatches.length > 1) {
+    throw new Error(
+      'selected_event_id matched multiple event rows. Use selected_row_id to choose a specific instance.'
+    );
+  }
+
+  return eventMatches[0];
+}
+
+/**
+ * Reads the Events sheet into structured records.
+ *
+ * @param {GoogleAppsScript.Spreadsheet.Sheet} sheet
+ * @returns {{headers:Array, columnMap:Object, records:Array}}
+ */
+function readPrepareRestoreEventsSheet_(sheet) {
+  const lastRow = sheet.getLastRow();
+  const lastColumn = sheet.getLastColumn();
+
+  if (lastRow < 2) {
+    throw new Error('Events tab contains no data rows to prepare for restore.');
+  }
+
+  const headers = sheet.getRange(1, 1, 1, lastColumn).getValues()[0];
+  const rows = sheet.getRange(2, 1, lastRow - 1, lastColumn).getValues();
+  const columnMap = buildPrepareRestoreColumnMap_(headers);
+
+  const records = rows.map(function (rowValues, index) {
+    return {
+      sheetRowNumber: index + 2,
+      row: mapPrepareRestoreEventArrayToObject_(rowValues, columnMap),
+      columnMap: columnMap
+    };
+  });
+
+  return {
+    headers: headers,
+    columnMap: columnMap,
+    records: records
+  };
+}
+
+/**
+ * Maps an Events row array into an object keyed by header names.
+ *
+ * @param {Array} rowValues
+ * @param {Object} colMap
+ * @returns {Object}
+ */
+function mapPrepareRestoreEventArrayToObject_(rowValues, colMap) {
+  return {
+    row_id: safeString(rowValues[colMap.row_id]),
+    event_id: safeString(rowValues[colMap.event_id]),
+    calendar_id: safeString(rowValues[colMap.calendar_id]),
+    title: safeString(rowValues[colMap.title]),
+    description: safeString(rowValues[colMap.description]),
+    location: safeString(rowValues[colMap.location]),
+    start_time: normalizePrepareRestoreCellValue_(rowValues[colMap.start_time]),
+    end_time: normalizePrepareRestoreCellValue_(rowValues[colMap.end_time]),
+    all_day: normalizePrepareRestoreBoolean_(rowValues[colMap.all_day]),
+    status: safeString(rowValues[colMap.status]),
+    created_at: normalizePrepareRestoreCellValue_(rowValues[colMap.created_at]),
+    updated_at: normalizePrepareRestoreCellValue_(rowValues[colMap.updated_at]),
+    organizer: safeString(rowValues[colMap.organizer]),
+    creator: safeString(rowValues[colMap.creator]),
+    attendees: safeString(rowValues[colMap.attendees]),
+    raw_text: safeString(rowValues[colMap.raw_text]),
+    raw_json: safeString(rowValues[colMap.raw_json]),
+    restore_ready: normalizePrepareRestoreBoolean_(rowValues[colMap.restore_ready]),
+    restore_status: safeString(rowValues[colMap.restore_status]),
+    notes: safeString(rowValues[colMap.notes])
+  };
+}
+
+
+/* ============================================================================
+ * VALIDATION
+ * ========================================================================== */
+
+/**
+ * Validates whether the selected Events row is suitable for restore staging.
+ *
+ * Rules:
+ * - cancelled events ARE eligible for restore staging
+ * - restore_ready=TRUE is required
+ * - non-cancelled events are allowed but warned, because restoring them may
+ *   create duplicates if the original is still present in the calendar
+ *
+ * @param {{sheetRowNumber:number, row:Object}} sourceRecord
+ * @param {Object} config
+ * @returns {{isValid:boolean, errors:string[], warnings:string[], mode:string, validationStatus:string, executionStatus:string, notes:string}}
+ */
+function validatePrepareRestoreSourceData_(sourceRecord, config) {
+  const row = sourceRecord.row;
+  const errors = [];
+  const warnings = [];
+
+  if (!row.row_id) {
+    errors.push('Source Events row is missing row_id.');
+  }
+
+  if (!row.event_id) {
+    errors.push('Source Events row is missing event_id.');
+  }
+
+  if (!row.start_time) {
+    errors.push('Source event start_time is required for restore.');
+  }
+
+  if (!row.end_time) {
+    errors.push('Source event end_time is required for restore.');
+  }
+
+  if (!config.target_calendar_id) {
+    errors.push('Config.target_calendar_id is required.');
+  }
+
+  if (row.restore_ready !== true) {
+    errors.push(
+      'Source event is not marked restore_ready=TRUE. Mark this row as restore_ready before staging it.'
+    );
+  }
+
+  if (!row.title) {
+    warnings.push('Source event title is blank.');
+  }
+
+  if (!row.description) {
+    warnings.push('Source event description is blank.');
+  }
+
+  if (!row.attendees) {
+    warnings.push('Source event attendees are blank.');
+  }
+
+  if (!row.status) {
+    warnings.push(
+      'Source event status is blank. Prepare restore can continue, but status was not available to confirm whether this row represents a cancellation snapshot.'
+    );
+  } else if (row.status.toLowerCase() !== 'cancelled') {
+    warnings.push(
+      'Source event status is "' + row.status + '", not "cancelled". Restoring this row may create a duplicate if the original event still exists in the calendar.'
+    );
+  }
+
+  const mode = toBoolean(config.dry_run_restore) ? 'dry_run' : 'execute';
+  const validationStatus = errors.length === 0 ? 'valid' : 'invalid';
+  const executionStatus = errors.length === 0 ? 'prepared' : 'blocked';
+
+  return {
+    isValid: errors.length === 0,
+    errors: errors,
+    warnings: warnings,
+    mode: mode,
+    validationStatus: validationStatus,
+    executionStatus: executionStatus,
+    notes: buildPrepareRestoreNotes_(errors, warnings)
+  };
+}
+
+/**
+ * Combines validation findings into a readable notes field.
+ *
+ * @param {string[]} errors
+ * @param {string[]} warnings
+ * @returns {string}
+ */
+function buildPrepareRestoreNotes_(errors, warnings) {
+  const parts = [];
+
+  if (errors.length > 0) {
+    parts.push('Errors: ' + errors.join(' | '));
+  }
+
+  if (warnings.length > 0) {
+    parts.push('Warnings: ' + warnings.join(' | '));
+  }
+
+  return parts.join(' || ');
+}
+
+
+/* ============================================================================
+ * RESTORE ROW BUILD / WRITE
+ * ========================================================================== */
+
+/**
+ * Builds the Restore row object from the source Events row.
+ *
+ * @param {{sheetRowNumber:number, row:Object}} sourceRecord
+ * @param {Object} config
+ * @param {Object} validation
+ * @returns {Object}
+ */
+function buildPreparedRestoreRow_(sourceRecord, config, validation) {
+  const source = sourceRecord.row;
+
+  return {
+    restore_id: generateRestoreId(),
+    source_row_id: source.row_id,
+    source_event_id: source.event_id,
+    target_calendar_id: safeString(config.target_calendar_id),
+    restore_mode: validation.mode,
+    title: source.title,
+    description: source.description,
+    location: source.location,
+    start_time: source.start_time,
+    end_time: source.end_time,
+    all_day: source.all_day,
+    attendees: source.attendees,
+    validation_status: validation.validationStatus,
+    execution_status: validation.executionStatus,
+    restored_event_id: '',
+    executed_at: '',
+    notes: validation.notes
+  };
+}
+
+/**
+ * Appends a prepared restore row to the Restore sheet.
+ *
+ * @param {GoogleAppsScript.Spreadsheet.Sheet} restoreSheet
+ * @param {Object} restoreRow
+ */
+function appendPreparedRestoreRow_(restoreSheet, restoreRow) {
+  const values = [[
+    restoreRow.restore_id,
+    restoreRow.source_row_id,
+    restoreRow.source_event_id,
+    restoreRow.target_calendar_id,
+    restoreRow.restore_mode,
+    restoreRow.title,
+    restoreRow.description,
+    restoreRow.location,
+    restoreRow.start_time,
+    restoreRow.end_time,
+    restoreRow.all_day,
+    restoreRow.attendees,
+    restoreRow.validation_status,
+    restoreRow.execution_status,
+    restoreRow.restored_event_id,
+    restoreRow.executed_at,
+    restoreRow.notes
+  ]];
+
+  const startRow = restoreSheet.getLastRow() + 1;
+  restoreSheet.getRange(startRow, 1, 1, values[0].length).setValues(values);
+}
+
+/**
+ * Updates the source Events row restore_status cell.
+ *
+ * @param {GoogleAppsScript.Spreadsheet.Sheet} eventsSheet
+ * @param {number} sheetRowNumber
+ * @param {string} status
+ */
+function updateSourceEventRestoreStatus_(eventsSheet, sheetRowNumber, status) {
+  const headers = eventsSheet.getRange(1, 1, 1, eventsSheet.getLastColumn()).getValues()[0];
+  const colMap = buildPrepareRestoreColumnMap_(headers);
+  const restoreStatusColumn = colMap.restore_status + 1;
+
+  eventsSheet.getRange(sheetRowNumber, restoreStatusColumn).setValue(status);
+}
+
+
+/* ============================================================================
+ * SUMMARY / USER MESSAGING
+ * ========================================================================== */
+
+/**
+ * Builds the summary written to Config and Log.
+ *
+ * @param {{sheetRowNumber:number, row:Object}} sourceRecord
+ * @param {Object} restoreRow
+ * @param {Object} validation
+ * @returns {string}
+ */
+function buildPrepareRestoreSummary_(sourceRecord, restoreRow, validation) {
+  const parts = [
+    validation.isValid ? 'Prepare restore complete' : 'Prepare restore blocked',
+    'restore_id=' + restoreRow.restore_id,
+    'source_row_id=' + sourceRecord.row.row_id,
+    'source_event_id=' + sourceRecord.row.event_id,
+    'target_calendar_id=' + restoreRow.target_calendar_id,
+    'restore_mode=' + restoreRow.restore_mode,
+    'validation_status=' + restoreRow.validation_status,
+    'execution_status=' + restoreRow.execution_status
+  ];
+
+  if (validation.errors.length > 0) {
+    parts.push('errors=' + validation.errors.length);
+  }
+
+  if (validation.warnings.length > 0) {
+    parts.push('warnings=' + validation.warnings.length);
+  }
+
+  return parts.join(' | ');
+}
+
+/**
+ * Builds a clearer user-facing popup message for prepare restore.
+ *
+ * @param {{sheetRowNumber:number, row:Object}} sourceRecord
+ * @param {Object} restoreRow
+ * @param {Object} validation
+ * @param {Object} config
+ * @returns {string}
+ */
+function buildPrepareRestoreAlertMessage_(sourceRecord, restoreRow, validation, config) {
+  const row = sourceRecord.row;
+  const lines = [];
+
+  if (validation.isValid) {
+    lines.push('Prepare Restore completed successfully.');
+    lines.push('');
+    lines.push('What happened:');
+    lines.push('- A restore request was staged in the Restore tab.');
+    lines.push('- The selected Events row was marked restore_status="prepared".');
+    lines.push('- This does not restore the event yet. It only stages the request.');
+    lines.push('');
+    lines.push('Prepared details:');
+    lines.push('- restore_id: ' + restoreRow.restore_id);
+    lines.push('- source_row_id: ' + row.row_id);
+    lines.push('- source_event_id: ' + row.event_id);
+    lines.push('- source_status: ' + (row.status || '(blank)'));
+    lines.push('- target_calendar_id: ' + restoreRow.target_calendar_id);
+    lines.push('- restore_mode: ' + restoreRow.restore_mode);
+
+    if (validation.warnings.length > 0) {
+      lines.push('');
+      lines.push('Warnings to review:');
+      validation.warnings.forEach(function (warning) {
+        lines.push('- ' + warning);
+      });
+    }
+
+    lines.push('');
+    lines.push('Next step:');
+    lines.push(
+      restoreRow.restore_mode === 'dry_run'
+        ? '- Run Dry Run Restore / Execute Restore according to your workflow after reviewing the staged row.'
+        : '- Review the staged Restore row, then continue with your restore execution step.'
+    );
+
+    return lines.join('\n');
+  }
+
+  lines.push('Prepare Restore could not stage this restore request.');
+  lines.push('');
+  lines.push('What was selected:');
+  lines.push('- source_row_id: ' + (row.row_id || '(blank)'));
+  lines.push('- source_event_id: ' + (row.event_id || '(blank)'));
+  lines.push('- source_status: ' + (row.status || '(blank)'));
+  lines.push('- restore_ready: ' + String(row.restore_ready));
+  lines.push('- target_calendar_id: ' + (safeString(config.target_calendar_id).trim() || '(blank)'));
+  lines.push('- restore_mode: ' + restoreRow.restore_mode);
+  lines.push('');
+  lines.push('Why it was blocked:');
+
+  validation.errors.forEach(function (error) {
+    lines.push('- ' + error);
+  });
+
+  if (validation.warnings.length > 0) {
+    lines.push('');
+    lines.push('Warnings:');
+    validation.warnings.forEach(function (warning) {
+      lines.push('- ' + warning);
+    });
+  }
+
+  lines.push('');
+  lines.push('What to do next:');
+
+  if (row.restore_ready !== true) {
+    lines.push('- Mark the source Events row as restore_ready=TRUE, then run Prepare Restore again.');
+  }
+
+  if (!row.start_time || !row.end_time) {
+    lines.push('- Make sure the source row has both start_time and end_time.');
+  }
+
+  if (!config.target_calendar_id) {
+    lines.push('- Fill in Config.target_calendar_id.');
+  }
+
+  lines.push('- Confirm you selected the correct backup row from the Events tab.');
+  lines.push('- Use selected_row_id when possible so you target one exact snapshot.');
+
+  if (row.status && row.status.toLowerCase() === 'cancelled') {
+    lines.push('');
+    lines.push('Note:');
+    lines.push('- Cancelled events are allowed to be restored by this revised script.');
+    lines.push('- In this case, the blocker is something else listed above, not the cancelled status itself.');
+  }
+
+  return lines.join('\n');
+}
+
+
+/* ============================================================================
+ * LOW-LEVEL HELPERS
+ * ========================================================================== */
+
+/**
+ * Builds a header-name -> column-index map.
+ *
+ * @param {Array} headers
+ * @returns {Object}
+ */
+function buildPrepareRestoreColumnMap_(headers) {
+  const map = {};
+
+  headers.forEach(function (header, index) {
+    map[String(header || '').trim()] = index;
+  });
+
+  return map;
+}
+
+/**
+ * Normalizes cell values for object mapping.
+ *
+ * @param {*} value
+ * @returns {*}
+ */
+function normalizePrepareRestoreCellValue_(value) {
+  if (value === null || value === undefined || value === '') {
+    return '';
+  }
+
+  if (value instanceof Date) {
+    return formatTimestamp(value);
+  }
+
+  return value;
+}
+
+/**
+ * Normalizes boolean-like values from the sheet.
+ *
+ * @param {*} value
+ * @returns {boolean}
+ */
+function normalizePrepareRestoreBoolean_(value) {
+  return toBoolean(value);
+}
+
+
+########################################################################
+FILE: PreviewHistoricalCount.gs
+########################################################################
+
+/**
+ * PreviewHistoricalCount.gs
+ *
+ * Purpose:
+ * Counts how many calendar events match the historical backup window without
+ * writing anything into the Events tab.
+ *
+ * Design:
+ * - reads the same historical date window used by runHistoricalBackup()
+ * - respects include_cancelled and expand_recurring
+ * - fetches matching events page by page
+ * - counts total matched events and total API pages
+ * - writes a plain-English summary into Config and Log
+ * - shows the user a clear preview before historical backup is run
+ *
+ * Depends on:
+ * - Helpers.gs
+ *   - APP
+ *   - getConfig()
+ *   - getProjectSheets()
+ *   - setConfigValues()
+ *   - logAction()
+ *   - runWithContext_()
+ *   - safeString()
+ *   - toBoolean()
+ *   - formatTimestamp()
+ *   - validateRequiredTabs()
+ *   - validateRequiredConfigKeys()
+ *
+ * Recommended prerequisite:
+ * - Enable Advanced Google Services > Calendar API
+ * - Enable Google Calendar API in the linked Cloud project
+ */
+
+
+/* ============================================================================
+ * PUBLIC BUTTON FUNCTION
+ * ========================================================================== */
+
+/**
+ * Button action:
+ * Preview how many events fall inside the configured historical range.
+ *
+ * This function does NOT write to the Events tab.
+ */
+function previewHistoricalCount() {
+  runWithContext_('preview_historical_count', function (runId, config) {
+    validateRequiredTabs();
+    validateRequiredConfigKeys();
+
+    const sheets = getProjectSheets();
+    validatePreviewHistoricalCountPrerequisites_(config);
+
+    const sourceCalendarId = safeString(config.source_calendar_id).trim();
+    const includeCancelled = toBoolean(config.include_cancelled);
+    const expandRecurring = toBoolean(config.expand_recurring);
+
+    const timeMin = previewHistoricalAsDateOrThrow_(config.historical_start, 'historical_start');
+    const timeMax = config.historical_end
+      ? previewHistoricalEndOfDay_(previewHistoricalAsDateOrThrow_(config.historical_end, 'historical_end'))
+      : new Date();
+
+    if (timeMax.getTime() < timeMin.getTime()) {
+      throw new Error(
+        'Historical preview window is invalid: historical_end cannot be earlier than historical_start.'
+      );
+    }
+
+    const preview = fetchHistoricalCountPreview_(
+      sourceCalendarId,
+      timeMin,
+      timeMax,
+      {
+        includeCancelled: includeCancelled,
+        expandRecurring: expandRecurring
+      }
+    );
+
+    const summary = buildHistoricalCountPreviewSummary_({
+      sourceCalendarId: sourceCalendarId,
+      rangeStart: timeMin,
+      rangeEnd: timeMax,
+      matchedCount: preview.matchedCount,
+      pageCount: preview.pageCount,
+      includeCancelled: includeCancelled,
+      expandRecurring: expandRecurring
+    });
+
+    setConfigValues({
+      last_run_status: 'Success',
+      last_run_summary: summary,
+      last_error: '',
+      system_status: APP.STATUS.READY
+    });
+
+    logAction({
+      action: 'preview_historical_count',
+      status: APP.LOG_STATUS.SUCCESS,
+      detail: summary,
+      runId: runId
+    });
+
+    SpreadsheetApp.getUi().alert(
+      'Historical count preview complete.\n\n' + summary
+    );
+  });
+}
+
+
+/* ============================================================================
+ * PRECHECKS
+ * ========================================================================== */
+
+/**
+ * Validates that previewHistoricalCount() has what it needs before fetching.
+ *
+ * @param {Object} config
+ */
+function validatePreviewHistoricalCountPrerequisites_(config) {
+  if (typeof Calendar === 'undefined' || !Calendar.Events || !Calendar.Events.list) {
+    throw new Error(
+      'Advanced Calendar service is not enabled. Enable the Calendar API in Apps Script advanced services before running historical count preview.'
+    );
+  }
+
+  if (!config.source_calendar_id) {
+    throw new Error('Config.source_calendar_id is required for historical count preview.');
+  }
+
+  if (!config.historical_start) {
+    throw new Error('Config.historical_start is required for historical count preview.');
+  }
+}
+
+
+/* ============================================================================
+ * FETCH / COUNT
+ * ========================================================================== */
+
+/**
+ * Counts how many events match the configured historical window.
+ *
+ * Notes:
+ * - singleEvents = expand_recurring
+ * - showDeleted = include_cancelled
+ * - this does NOT write any data to Events
+ *
+ * @param {string} calendarId
+ * @param {Date} timeMin
+ * @param {Date} timeMax
+ * @param {Object} options
+ * @param {boolean} options.includeCancelled
+ * @param {boolean} options.expandRecurring
+ * @returns {{matchedCount:number, pageCount:number}}
+ */
+function fetchHistoricalCountPreview_(calendarId, timeMin, timeMax, options) {
+  let matchedCount = 0;
+  let pageCount = 0;
+  let pageToken = '';
+
+  do {
+    const response = Calendar.Events.list(calendarId, {
+      timeMin: timeMin.toISOString(),
+      timeMax: timeMax.toISOString(),
+      singleEvents: options.expandRecurring,
+      showDeleted: options.includeCancelled,
+      maxResults: 2500,
+      pageToken: pageToken || undefined
+    });
+
+    const items = response.items || [];
+    matchedCount += items.length;
+    pageCount += 1;
+    pageToken = response.nextPageToken || '';
+  } while (pageToken);
+
+  return {
+    matchedCount: matchedCount,
+    pageCount: pageCount
+  };
+}
+
+
+/* ============================================================================
+ * SUMMARY
+ * ========================================================================== */
+
+/**
+ * Builds the plain-English summary written to Config and Log.
+ *
+ * @param {Object} result
+ * @returns {string}
+ */
+function buildHistoricalCountPreviewSummary_(result) {
+  return [
+    'Historical count preview complete',
+    'calendar=' + result.sourceCalendarId,
+    'range=' + formatTimestamp(result.rangeStart) + ' to ' + formatTimestamp(result.rangeEnd),
+    'matched_events=' + result.matchedCount,
+    'pages=' + result.pageCount,
+    'include_cancelled=' + (result.includeCancelled ? 'TRUE' : 'FALSE'),
+    'expand_recurring=' + (result.expandRecurring ? 'TRUE' : 'FALSE'),
+    'next_step=Run runHistoricalBackup() if this count looks correct'
+  ].join(' | ');
+}
+
+
+/* ============================================================================
+ * DATE HELPERS
+ * ========================================================================== */
+
+/**
+ * Converts a value into a valid Date or throws a readable error.
+ *
+ * @param {*} value
+ * @param {string} fieldName
+ * @returns {Date}
+ */
+function previewHistoricalAsDateOrThrow_(value, fieldName) {
+  const date = value instanceof Date ? value : new Date(value);
+
+  if (isNaN(date.getTime())) {
+    throw new Error('Config.' + fieldName + ' is not a valid date.');
+  }
+
+  return date;
+}
+
+/**
+ * Returns the end of the supplied date in local script time.
+ *
+ * @param {Date} date
+ * @returns {Date}
+ */
+function previewHistoricalEndOfDay_(date) {
+  const result = new Date(date);
+  result.setHours(23, 59, 59, 999);
+  return result;
+}
+
+
+########################################################################
+FILE: Validate.gs
+########################################################################
+
+/**
+ * Validate.gs
+ *
+ * Purpose:
+ * Validates that the spreadsheet is correctly structured before any backup
+ * or restore actions run.
+ *
+ * This script checks:
+ * - required tabs exist
+ * - required headers exist on each tab
+ * - essential config values are present / valid
+ * - project status fields are updated with a readable summary
+ *
+ * Depends on:
+ * - Helpers.gs
+ *   - APP
+ *   - getSheetOrThrow()
+ *   - getConfig()
+ *   - setConfigValue()
+ *   - setConfigValues()
+ *   - logAction()
+ *   - runWithContext_()
+ *   - formatTimestamp()
+ */
+
+
+/* ============================================================================
+ * PUBLIC BUTTON FUNCTION
+ * ========================================================================== */
+
+/**
+ * Button action:
+ * Validate the current spreadsheet structure and core config values.
+ */
+function validateSheet() {
+  runWithContext_('validate_sheet', function (runId) {
+    validateRequiredTabs();
+    validateRequiredConfigKeys();
+
+    const sheets = getProjectSheets();
+    const config = getConfig();
+
+    const results = {
+      tabsChecked: [],
+      headerChecks: [],
+      warnings: [],
+      configChecks: []
+    };
+
+    validateConfigTab_(sheets.config, config, results);
+    validateEventsTab_(sheets.events, results);
+    validateRestoreTab_(sheets.restore, results);
+    validateLogTab_(sheets.log, results);
+    validateCoreConfigValues_(config, results);
+
+    const summary = buildValidationSummary_(results);
+
+    setConfigValues({
+      last_run_status: 'Success',
+      last_run_summary: summary,
+      last_error: '',
+      system_status: APP.STATUS.READY
+    });
+
+    logAction({
+      action: 'validate_sheet',
+      status: APP.LOG_STATUS.SUCCESS,
+      detail: summary,
+      runId: runId
+    });
+
+    if (results.warnings.length > 0) {
+      results.warnings.forEach(function (warning) {
+        logAction({
+          action: 'validate_sheet',
+          status: APP.LOG_STATUS.WARNING,
+          detail: warning,
+          runId: runId
+        });
+      });
+    }
+
+    SpreadsheetApp.getUi().alert(
+      'Sheet validation complete.\n\n' + summary
+    );
+  });
+}
+
+
+/* ============================================================================
+ * TAB VALIDATION
+ * ========================================================================== */
+
+/**
+ * Validates Config tab headers and layout.
+ *
+ * @param {GoogleAppsScript.Spreadsheet.Sheet} sheet
+ * @param {Object} config
+ * @param {Object} results
+ */
+function validateConfigTab_(sheet, config, results) {
+  const expectedHeaders = [
+    'project_name',
+    'source_calendar_id',
+    'target_calendar_id',
+    'mode',
+    'historical_start',
+    'historical_end',
+    'last_sync',
+    'include_cancelled',
+    'expand_recurring',
+    'dry_run_restore',
+    'execution_lock',
+    'selected_event_id',
+    'selected_row_id',
+    'last_run_status',
+    'last_run_summary',
+    'last_error',
+    'system_status'
+  ];
+
+  validateSheetHeaders_(sheet, expectedHeaders, 'Config');
+  results.tabsChecked.push('Config');
+  results.headerChecks.push('Config headers OK');
+
+  if (sheet.getLastRow() < APP.CONFIG_VALUE_ROW) {
+    throw new Error('Config tab is missing row 2 values.');
+  }
+
+  if (!config.project_name) {
+    results.warnings.push('Config.project_name is blank.');
+  }
+}
+
+/**
+ * Validates Events tab headers.
+ *
+ * @param {GoogleAppsScript.Spreadsheet.Sheet} sheet
+ * @param {Object} results
+ */
+function validateEventsTab_(sheet, results) {
+  const expectedHeaders = [
+    'row_id',
+    'event_id',
+    'calendar_id',
+    'title',
+    'description',
+    'location',
+    'start_time',
+    'end_time',
+    'all_day',
+    'status',
+    'created_at',
+    'updated_at',
+    'organizer',
+    'creator',
+    'attendees',
+    'raw_text',
+    'raw_json',
+    'restore_ready',
+    'restore_status',
+    'notes'
+  ];
+
+  validateSheetHeaders_(sheet, expectedHeaders, 'Events');
+  results.tabsChecked.push('Events');
+  results.headerChecks.push('Events headers OK');
+}
+
+/**
+ * Validates Restore tab headers.
+ *
+ * @param {GoogleAppsScript.Spreadsheet.Sheet} sheet
+ * @param {Object} results
+ */
+function validateRestoreTab_(sheet, results) {
+  const expectedHeaders = [
+    'restore_id',
+    'source_row_id',
+    'source_event_id',
+    'target_calendar_id',
+    'restore_mode',
+    'title',
+    'description',
+    'location',
+    'start_time',
+    'end_time',
+    'all_day',
+    'attendees',
+    'validation_status',
+    'execution_status',
+    'restored_event_id',
+    'executed_at',
+    'notes'
+  ];
+
+  validateSheetHeaders_(sheet, expectedHeaders, 'Restore');
+  results.tabsChecked.push('Restore');
+  results.headerChecks.push('Restore headers OK');
+}
+
+/**
+ * Validates Log tab headers.
+ *
+ * @param {GoogleAppsScript.Spreadsheet.Sheet} sheet
+ * @param {Object} results
+ */
+function validateLogTab_(sheet, results) {
+  const expectedHeaders = [
+    'timestamp',
+    'action',
+    'status',
+    'detail',
+    'run_id',
+    'event_id',
+    'restore_id'
+  ];
+
+  validateSheetHeaders_(sheet, expectedHeaders, 'Log');
+  results.tabsChecked.push('Log');
+  results.headerChecks.push('Log headers OK');
+}
+
+
+/* ============================================================================
+ * CONFIG VALUE VALIDATION
+ * ========================================================================== */
+
+/**
+ * Validates essential config values used by future scripts.
+ *
+ * @param {Object} config
+ * @param {Object} results
+ */
+function validateCoreConfigValues_(config, results) {
+  if (!config.target_calendar_id) {
+    throw new Error('Config.target_calendar_id is required.');
+  }
+  results.configChecks.push('target_calendar_id OK');
+
+  if (!config.mode) {
+    throw new Error('Config.mode is required.');
+  }
+
+  const allowedModes = ['sandbox', 'live'];
+  if (allowedModes.indexOf(String(config.mode).toLowerCase()) === -1) {
+    throw new Error('Config.mode must be either "sandbox" or "live".');
+  }
+  results.configChecks.push('mode OK');
+
+  if (!config.historical_start) {
+    throw new Error('Config.historical_start is required.');
+  }
+
+  const historicalStart = asDateOrThrow_(config.historical_start, 'historical_start');
+  results.configChecks.push('historical_start OK');
+
+  if (config.historical_end) {
+    const historicalEnd = asDateOrThrow_(config.historical_end, 'historical_end');
+
+    if (historicalEnd.getTime() < historicalStart.getTime()) {
+      throw new Error('Config.historical_end cannot be earlier than historical_start.');
+    }
+
+    results.configChecks.push('historical_end OK');
+  } else {
+    results.warnings.push('Config.historical_end is blank. Historical backup will run forward from historical_start.');
+  }
+
+  if (config.last_sync) {
+    asDateOrThrow_(config.last_sync, 'last_sync');
+    results.configChecks.push('last_sync OK');
+  } else {
+    results.warnings.push('Config.last_sync is blank. Incremental backup has not been initialized yet.');
+  }
+
+  validateBooleanConfig_(config, 'include_cancelled', results);
+  validateBooleanConfig_(config, 'expand_recurring', results);
+  validateBooleanConfig_(config, 'dry_run_restore', results);
+  validateBooleanConfig_(config, 'execution_lock', results);
+
+  if (config.execution_lock === true) {
+    results.warnings.push('execution_lock is currently TRUE. New runs will be blocked until cleared.');
+  }
+}
+
+/**
+ * Validates a config key is boolean.
+ *
+ * @param {Object} config
+ * @param {string} key
+ * @param {Object} results
+ */
+function validateBooleanConfig_(config, key, results) {
+  if (typeof config[key] !== 'boolean') {
+    throw new Error('Config.' + key + ' must be TRUE or FALSE.');
+  }
+
+  results.configChecks.push(key + ' OK');
+}
+
+
+/* ============================================================================
+ * LOW-LEVEL HELPERS
+ * ========================================================================== */
+
+/**
+ * Validates that row 1 headers match the expected ordered list exactly.
+ *
+ * @param {GoogleAppsScript.Spreadsheet.Sheet} sheet
+ * @param {string[]} expectedHeaders
+ * @param {string} label
+ */
+function validateSheetHeaders_(sheet, expectedHeaders, label) {
+  const actualHeaders = sheet
+    .getRange(1, 1, 1, expectedHeaders.length)
+    .getValues()[0]
+    .map(function (value) {
+      return String(value || '').trim();
+    });
+
+  const missing = [];
+  const mismatched = [];
+
+  expectedHeaders.forEach(function (expectedHeader, index) {
+    const actualHeader = actualHeaders[index];
+
+    if (!actualHeader) {
+      missing.push(expectedHeader);
+      return;
+    }
+
+    if (actualHeader !== expectedHeader) {
+      mismatched.push(
+        'column ' + (index + 1) + ': expected "' + expectedHeader + '" but found "' + actualHeader + '"'
+      );
+    }
+  });
+
+  if (missing.length > 0 || mismatched.length > 0) {
+    let message = label + ' tab headers are invalid.';
+
+    if (missing.length > 0) {
+      message += ' Missing header(s): ' + missing.join(', ') + '.';
+    }
+
+    if (mismatched.length > 0) {
+      message += ' Mismatch(es): ' + mismatched.join('; ') + '.';
+    }
+
+    throw new Error(message);
+  }
+}
+
+/**
+ * Converts a value into a valid Date or throws a readable error.
+ *
+ * @param {*} value
+ * @param {string} fieldName
+ * @returns {Date}
+ */
+function asDateOrThrow_(value, fieldName) {
+  const date = value instanceof Date ? value : new Date(value);
+
+  if (isNaN(date.getTime())) {
+    throw new Error('Config.' + fieldName + ' is not a valid date.');
+  }
+
+  return date;
+}
+
+/**
+ * Builds a readable validation summary for Config + Log + alert output.
+ *
+ * @param {Object} results
+ * @returns {string}
+ */
+function buildValidationSummary_(results) {
+  const parts = [];
+
+  parts.push('Tabs OK: ' + results.tabsChecked.length);
+  parts.push('Header sets OK: ' + results.headerChecks.length);
+  parts.push('Config checks OK: ' + results.configChecks.length);
+
+  if (results.warnings.length > 0) {
+    parts.push('Warnings: ' + results.warnings.length + ' [' + results.warnings.join(' | ') + ']');
+  } else {
+    parts.push('Warnings: 0');
+  }
+
+  return parts.join(' | ');
+}
+
