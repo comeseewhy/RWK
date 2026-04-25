@@ -65,7 +65,9 @@ export function createBoundsFromGeoJsonFeatures(features = []) {
   const bounds = L.latLngBounds([]);
 
   features.filter(Boolean).forEach((feature) => {
-    const featureBounds = L.geoJSON(feature).getBounds();
+    const featureBounds = L.geoJSON(feature, {
+      interactive: false
+    }).getBounds();
 
     if (featureBounds?.isValid?.()) {
       bounds.extend(featureBounds);
@@ -78,7 +80,10 @@ export function createBoundsFromGeoJsonFeatures(features = []) {
 export function createBoundsFromGeoJson(geojson) {
   if (!geojson) return null;
 
-  const bounds = L.geoJSON(geojson).getBounds();
+  const bounds = L.geoJSON(geojson, {
+    interactive: false
+  }).getBounds();
+
   return bounds?.isValid?.() ? bounds : null;
 }
 
@@ -139,7 +144,7 @@ function getResponsiveFitPadding(map, mode) {
   if (mode === "selected-boundaries") {
     return {
       paddingTopLeft: [
-        Math.round(width * (isNarrow ? 0.045 : 0.045)),
+        Math.round(width * 0.045),
         Math.round(height * (isNarrow ? 0.08 : 0.07))
       ],
       paddingBottomRight: [
@@ -155,7 +160,7 @@ function getResponsiveFitPadding(map, mode) {
       Math.round(height * (isNarrow ? 0.08 : 0.06))
     ],
     paddingBottomRight: [
-      Math.round(width * (isNarrow ? 0.055 : 0.055)),
+      Math.round(width * 0.055),
       Math.round(height * (isShort ? 0.12 : 0.08))
     ]
   };

@@ -29,6 +29,12 @@ export function createWorkspaceState() {
       originTypes: []
     },
 
+    privacy: {
+      pointDetailsEnabled: false,
+      jobPopupsEnabled: false,
+      originPopupsEnabled: false
+    },
+
     populationRows: [],
     visibleRows: [],
     visibleOrigins: [],

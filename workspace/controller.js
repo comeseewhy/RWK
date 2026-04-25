@@ -197,6 +197,12 @@ export function createWorkspaceController(deps = {}) {
     if (!Array.isArray(state.selection.boundaryKeys)) {
       state.selection.boundaryKeys = [];
     }
+
+    state.privacy = {
+      pointDetailsEnabled: false,
+      jobPopupsEnabled: false,
+      originPopupsEnabled: false
+    };
   }
 
   function applyConfig(config = null) {
@@ -291,7 +297,9 @@ export function createWorkspaceController(deps = {}) {
         `appointments=${state.refinements.appointmentTypes.length}`,
         `originTypes=${state.refinements.originTypes.length}`,
         `camera=${cameraMode}`,
-        `markerSelection=${state.selection.boundaryKeys.length > 0 ? "on" : "off"}`
+        `pointDetails=disabled`,
+        `jobPopups=disabled`,
+        `originPopups=disabled`
       ].join(", ")
     );
   }
