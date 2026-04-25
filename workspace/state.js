@@ -1,3 +1,5 @@
+// workspace/state.js
+
 export function createWorkspaceState() {
   return {
     runtime: null,
@@ -16,12 +18,13 @@ export function createWorkspaceState() {
     },
 
     selection: {
-      boundaryKey: "",
+      boundaryKeys: [],
       originId: ""
     },
 
     refinements: {
       days: [],
+      appointmentTypes: [],
       visitBuckets: [],
       originTypes: []
     },

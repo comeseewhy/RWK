@@ -2,36 +2,54 @@
 
 import { buildJobPopupHtml, buildOriginPopupHtml } from "./popup.js";
 
+const ORIGIN_PALETTE = Object.freeze({
+  warehouse: {
+    color: "#0f766e",
+    fillColor: "#14b8a6",
+    labelClassName: "origin-label origin-label--warehouse"
+  },
+  showroom: {
+    color: "#7c3aed",
+    fillColor: "#a78bfa",
+    labelClassName: "origin-label origin-label--showroom"
+  }
+});
+
 export function renderJobMarkers({
   rows,
   layerGroup,
-  selectedBoundaryKey = "",
+  selectedBoundaryKeys = [],
   onClick = null
 }) {
   if (!layerGroup) return 0;
 
   const safeRows = Array.isArray(rows) ? rows : [];
+  const markerSelectionEnabled =
+    Array.isArray(selectedBoundaryKeys) && selectedBoundaryKeys.length > 0;
 
   safeRows.forEach((row) => {
     const color = row._dayColor || "#2563eb";
 
     const marker = L.circleMarker([row._latitude, row._longitude], {
-      radius: 6,
-      weight: 1,
-      opacity: 1,
+      radius: markerSelectionEnabled ? 6.5 : 5.5,
+      weight: markerSelectionEnabled ? 1.25 : 1,
+      opacity: markerSelectionEnabled ? 1 : 0.72,
       color,
       fillColor: color,
-      fillOpacity: 0.82
+      fillOpacity: markerSelectionEnabled ? 0.82 : 0.58,
+      interactive: markerSelectionEnabled
     });
 
-    marker.bindPopup(
-      buildJobPopupHtml(row, {
-        selectedBoundaryKey
-      })
-    );
+    if (markerSelectionEnabled) {
+      marker.bindPopup(
+        buildJobPopupHtml(row, {
+          selectedBoundaryKey: selectedBoundaryKeys.join(",")
+        })
+      );
 
-    if (typeof onClick === "function") {
-      marker.on("click", () => onClick(row, marker));
+      if (typeof onClick === "function") {
+        marker.on("click", () => onClick(row, marker));
+      }
     }
 
     marker.addTo(layerGroup);
@@ -53,8 +71,16 @@ export function renderOriginMarkers({
   safeOrigins.forEach((origin) => {
     const isSelected = origin.id === selectedOriginId;
     const style = getOriginMarkerStyle(origin, isSelected);
+    const palette = getOriginPalette(origin);
 
     const marker = L.circleMarker([origin._latitude, origin._longitude], style);
+
+    marker.bindTooltip(origin.name || "Origin", {
+      permanent: true,
+      direction: "right",
+      offset: [12, 0],
+      className: palette.labelClassName
+    });
 
     marker.bindPopup(
       buildOriginPopupHtml(origin, {
@@ -73,22 +99,18 @@ export function renderOriginMarkers({
 }
 
 function getOriginMarkerStyle(origin, isSelected) {
-  const palette = {
-    warehouse: { color: "#0f766e", fillColor: "#14b8a6" },
-    showroom: { color: "#7c3aed", fillColor: "#a78bfa" },
-    office: { color: "#2563eb", fillColor: "#60a5fa" },
-    supplier: { color: "#b45309", fillColor: "#f59e0b" },
-    other: { color: "#475569", fillColor: "#94a3b8" }
-  };
-
-  const meta = palette[origin._typeKey] || palette.other;
+  const palette = getOriginPalette(origin);
 
   return {
     radius: isSelected ? 11 : 9,
     weight: isSelected ? 3 : 2,
     opacity: 1,
-    color: isSelected ? "#111827" : meta.color,
-    fillColor: meta.fillColor,
+    color: isSelected ? "#111827" : palette.color,
+    fillColor: palette.fillColor,
     fillOpacity: isSelected ? 0.95 : 0.88
   };
+}
+
+function getOriginPalette(origin) {
+  return ORIGIN_PALETTE[origin?._typeKey] || ORIGIN_PALETTE.showroom;
 }

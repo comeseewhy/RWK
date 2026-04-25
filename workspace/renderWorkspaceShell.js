@@ -1,3 +1,5 @@
+// workspace/renderWorkspaceShell.js
+
 export function renderWorkspaceShell() {
   return `
     <div class="app-shell workspace-shell">
@@ -8,6 +10,11 @@ export function renderWorkspaceShell() {
           <p class="topbar__subtitle">
             Spatial review, refinement, and boundary-driven operational inspection.
           </p>
+        </div>
+
+        <div class="topbar__status" id="headerResultPill" aria-live="polite">
+          <span id="headerResultCount" class="topbar__status-count">0 coordinates</span>
+          <span id="headerResultMeta" class="topbar__status-meta">Waiting for filters</span>
         </div>
 
         <div class="topbar__actions">
@@ -23,8 +30,15 @@ export function renderWorkspaceShell() {
       </header>
 
       <main class="layout">
-        <section class="map-section" aria-label="Map section">
-          <div id="map" aria-label="Map"></div>
+        <section class="map-column" aria-label="Map and diagnostics">
+          <section class="map-section" aria-label="Map section">
+            <div id="map" aria-label="Map"></div>
+          </section>
+
+          <section class="debug-strip" aria-labelledby="debugCardTitle">
+            <h2 id="debugCardTitle" class="debug-strip__title">Debug</h2>
+            <pre id="debugOutput" class="debug-output">Starting...</pre>
+          </section>
         </section>
 
         <aside class="panel" aria-label="Workspace controls">
@@ -38,15 +52,6 @@ export function renderWorkspaceShell() {
                   id="dayToggleGroup"
                   class="toggle-group"
                   aria-label="Day of week filters"
-                ></div>
-              </div>
-
-              <div class="form-field">
-                <span class="form-label">Visit count</span>
-                <div
-                  id="visitToggleGroup"
-                  class="toggle-group"
-                  aria-label="Visit count filters"
                 ></div>
               </div>
             </div>
@@ -65,39 +70,21 @@ export function renderWorkspaceShell() {
                 ></div>
               </div>
             </div>
-
-            <div class="button-row">
-              <button id="clearOriginButton" class="button" type="button">
-                Clear origin
-              </button>
-            </div>
           </section>
 
-          <section class="panel-card" aria-labelledby="resultsCardTitle">
-            <h2 id="resultsCardTitle" class="panel-card__title">Results</h2>
+          <section class="panel-card" aria-labelledby="appointmentCardTitle">
+            <h2 id="appointmentCardTitle" class="panel-card__title">Appointment</h2>
 
-            <dl class="stats-list">
-              <div class="stats-row">
-                <dt>Coordinate-valid rows</dt>
-                <dd id="candidateMarkerCount">0</dd>
+            <div class="form-grid">
+              <div class="form-field">
+                <span class="form-label">Appointment type</span>
+                <div
+                  id="appointmentTypeToggleGroup"
+                  class="toggle-group"
+                  aria-label="Appointment type filters"
+                ></div>
               </div>
-              <div class="stats-row">
-                <dt>After attribute filters</dt>
-                <dd id="filteredRowCount">0</dd>
-              </div>
-              <div class="stats-row">
-                <dt>Inside boundary</dt>
-                <dd id="boundaryMatchedCount">0</dd>
-              </div>
-              <div class="stats-row">
-                <dt>Visible markers</dt>
-                <dd id="visibleMarkerCount">0</dd>
-              </div>
-            </dl>
-
-            <p id="resultsMessage" class="panel-text panel-text--compact">
-              Waiting for workspace state.
-            </p>
+            </div>
           </section>
 
           <section class="panel-card" aria-labelledby="selectionCardTitle">
@@ -108,10 +95,6 @@ export function renderWorkspaceShell() {
                 <dt>Selected boundary</dt>
                 <dd id="selectedBoundaryName">None</dd>
               </div>
-              <div class="stats-row">
-                <dt>Selected origin</dt>
-                <dd id="selectedOriginName">None</dd>
-              </div>
             </dl>
 
             <div class="button-row">
@@ -119,11 +102,6 @@ export function renderWorkspaceShell() {
                 Clear boundary
               </button>
             </div>
-          </section>
-
-          <section class="panel-card" aria-labelledby="debugCardTitle">
-            <h2 id="debugCardTitle" class="panel-card__title">Debug</h2>
-            <pre id="debugOutput" class="debug-output">Starting...</pre>
           </section>
         </aside>
       </main>

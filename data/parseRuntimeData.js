@@ -1,8 +1,29 @@
 // data/parseRuntimeData.js
 
+export const APPOINTMENT_TYPES = Object.freeze({
+  "bfqu2a3urejcnobl2p80tebo0g@group.calendar.google.com": {
+    key: "installers",
+    label: "Installers"
+  },
+  "e8gq6ptj73o1p36cm3cl6c42j4@group.calendar.google.com": {
+    key: "countertop_template",
+    label: "Countertop Template"
+  },
+  "5cel8t58jaldjfm4suvu64i6tg@group.calendar.google.com": {
+    key: "cabinet_delivery",
+    label: "Cabinet Delivery"
+  },
+  "v9tgaibikbcts6uu92lkum8qc0@group.calendar.google.com": {
+    key: "initial_template",
+    label: "Initial Template"
+  }
+});
+
 const ORGANIZER_ALIASES = Object.freeze({
-  "e8gq6ptj73o1p36cm3cl6c42j4@group.calendar.google.com": "install",
-  "bfqu2a3urejcnobl2p80tebo0g@group.calendar.google.com": "template"
+  "bfqu2a3urejcnobl2p80tebo0g@group.calendar.google.com": "install",
+  "e8gq6ptj73o1p36cm3cl6c42j4@group.calendar.google.com": "template",
+  "5cel8t58jaldjfm4suvu64i6tg@group.calendar.google.com": "delivery",
+  "v9tgaibikbcts6uu92lkum8qc0@group.calendar.google.com": "template"
 });
 
 const DAY_META = Object.freeze({
@@ -69,9 +90,7 @@ export function parseCsv(csvText) {
 
   for (let i = 1; i < lines.length; i += 1) {
     const rawLine = lines[i];
-    if (!rawLine.trim()) {
-      continue;
-    }
+    if (!rawLine.trim()) continue;
 
     const values = parseCsvLine(rawLine);
     const record = {};
@@ -109,10 +128,7 @@ function splitCsvLines(text) {
     }
 
     if ((char === "\n" || char === "\r") && !inQuotes) {
-      if (char === "\r" && next === "\n") {
-        i += 1;
-      }
-
+      if (char === "\r" && next === "\n") i += 1;
       lines.push(current);
       current = "";
       continue;
@@ -121,10 +137,7 @@ function splitCsvLines(text) {
     current += char;
   }
 
-  if (current) {
-    lines.push(current);
-  }
-
+  if (current) lines.push(current);
   return lines;
 }
 
@@ -165,8 +178,9 @@ export function joinRows(eventsRows, exportRows) {
 
   for (const row of eventsRows) {
     const joinKey = getJoinKey(row);
-    if (!joinKey) continue;
-    eventIndex.set(joinKey, row);
+    if (joinKey) {
+      eventIndex.set(joinKey, row);
+    }
   }
 
   return exportRows.map((exportRow) => {
@@ -192,8 +206,6 @@ function buildJoinedRow(exportRow, eventRow) {
       exportRow.decimal_longitude
   );
 
-  const hasCoordinates = Number.isFinite(latitude) && Number.isFinite(longitude);
-
   return {
     ...eventRow,
     ...exportRow,
@@ -201,7 +213,7 @@ function buildJoinedRow(exportRow, eventRow) {
     _joinKey: getJoinKey(exportRow) || getJoinKey(eventRow),
     _latitude: latitude,
     _longitude: longitude,
-    _hasCoordinates: hasCoordinates
+    _hasCoordinates: Number.isFinite(latitude) && Number.isFinite(longitude)
   };
 }
 
@@ -217,15 +229,9 @@ export function deriveRow(row) {
     )
   );
 
-  const organizerText = getOrganizerLabel(
-    firstNonEmpty(
-      row.calendar_id,
-      row.organizer,
-      row.creator,
-      row.created_by
-    )
-  );
-
+  const calendarId = firstNonEmpty(row.calendar_id, row.organizer, row.creator, row.created_by);
+  const appointmentMeta = getAppointmentMeta(calendarId);
+  const organizerText = getOrganizerLabel(calendarId);
   const dayInfo = getDayInfo(parsedDate);
   const addressText = composeAddress(row);
   const siteKey = buildSiteKey(row);
@@ -233,9 +239,12 @@ export function deriveRow(row) {
 
   return {
     ...row,
+
     _title:
       firstNonEmpty(row.title, row.summary, row.customer_name, row.name) || "Record",
+
     _parsedDate: parsedDate,
+
     _dateDisplay:
       firstNonEmpty(
         row.date,
@@ -244,21 +253,31 @@ export function deriveRow(row) {
         row.start_time,
         formatDate(parsedDate)
       ) || "—",
+
     _year: year,
+
+    _calendarId: calendarId,
+    _appointmentKey: appointmentMeta.key,
+    _appointmentLabel: appointmentMeta.label,
+
     _organizerText: organizerText,
     _organizerKey: normalizeText(organizerText),
+
     _dayKey: dayInfo.key,
     _dayLabel: dayInfo.label,
     _dayIndex: dayInfo.index,
     _dayColor: dayInfo.color,
+
     _addressText: addressText,
     _siteKey: siteKey,
     _visitCount: 0,
     _visitBucket: "",
+
     _keywordBlob: normalizeText(
       [
         row.title,
         row.summary,
+        appointmentMeta.label,
         organizerText,
         addressText,
         row.notes,
@@ -288,9 +307,7 @@ export function deriveOriginRow(origin) {
 }
 
 export function getJoinKey(row) {
-  if (!row) {
-    return "";
-  }
+  if (!row) return "";
 
   const parts = [
     row.row_id || row.source_row_id || "",
@@ -299,6 +316,18 @@ export function getJoinKey(row) {
   ].map((value) => String(value).trim());
 
   return parts.some(Boolean) ? parts.join("|") : "";
+}
+
+function getAppointmentMeta(value) {
+  const raw = String(value || "").trim();
+  if (!raw) {
+    return { key: "unknown", label: "Unknown" };
+  }
+
+  return APPOINTMENT_TYPES[raw] || {
+    key: normalizeText(raw).replace(/[^\w]+/g, "_"),
+    label: raw
+  };
 }
 
 function getOrganizerLabel(value) {
@@ -346,7 +375,10 @@ function composeAddress(row) {
     .filter(Boolean)
     .map((value) => String(value).trim())
     .filter(Boolean)
-    .filter((value, index, array) => array.findIndex((v) => v.toLowerCase() === value.toLowerCase()) === index)
+    .filter(
+      (value, index, array) =>
+        array.findIndex((v) => v.toLowerCase() === value.toLowerCase()) === index
+    )
     .join(", ");
 }
 

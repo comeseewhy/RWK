@@ -1,37 +1,39 @@
+// workspace/panels.js
+
 import { formatTimestamp } from "./utils.js";
 
 const DAY_META = [
-  { value: "sunday", label: "Sun", color: "#dc2626" },
   { value: "monday", label: "Mon", color: "#ea580c" },
   { value: "tuesday", label: "Tue", color: "#ca8a04" },
   { value: "wednesday", label: "Wed", color: "#16a34a" },
   { value: "thursday", label: "Thu", color: "#0891b2" },
   { value: "friday", label: "Fri", color: "#2563eb" },
-  { value: "saturday", label: "Sat", color: "#7c3aed" }
+  { value: "saturday", label: "Sat", color: "#7c3aed" },
+  { value: "sunday", label: "Sun", color: "#dc2626" }
 ];
-
-const VISIT_BUCKETS = Array.from({ length: 10 }, (_, index) => {
-  const value = String(index + 1);
-  return {
-    value,
-    label: `${value}x`
-  };
-});
 
 const ORIGIN_TYPE_META = [
   { value: "warehouse", label: "Warehouse", color: "#0f766e" },
-  { value: "showroom", label: "Showroom", color: "#7c3aed" },
-  { value: "office", label: "Office", color: "#2563eb" },
-  { value: "supplier", label: "Supplier", color: "#b45309" },
-  { value: "other", label: "Other", color: "#475569" }
+  { value: "showroom", label: "Showroom", color: "#7c3aed" }
+];
+
+const APPOINTMENT_TYPE_META = [
+  { value: "installers", label: "Installers", color: "#1d4ed8" },
+  { value: "countertop_template", label: "Countertop Template", color: "#7c3aed" },
+  { value: "cabinet_delivery", label: "Cabinet Delivery", color: "#0f766e" },
+  { value: "initial_template", label: "Initial Template", color: "#d97706" }
 ];
 
 export function cacheWorkspacePanelUi(root = document) {
   return {
     backToLauncherButton: root.getElementById("backToLauncherButton"),
 
+    headerResultPill: root.getElementById("headerResultPill"),
+    headerResultCount: root.getElementById("headerResultCount"),
+    headerResultMeta: root.getElementById("headerResultMeta"),
+
     dayToggleGroup: root.getElementById("dayToggleGroup"),
-    visitToggleGroup: root.getElementById("visitToggleGroup"),
+    appointmentTypeToggleGroup: root.getElementById("appointmentTypeToggleGroup"),
     originTypeToggleGroup: root.getElementById("originTypeToggleGroup"),
 
     candidateMarkerCount: root.getElementById("candidateMarkerCount"),
@@ -41,10 +43,8 @@ export function cacheWorkspacePanelUi(root = document) {
     resultsMessage: root.getElementById("resultsMessage"),
 
     selectedBoundaryName: root.getElementById("selectedBoundaryName"),
-    selectedOriginName: root.getElementById("selectedOriginName"),
 
     clearBoundaryButton: root.getElementById("clearBoundaryButton"),
-    clearOriginButton: root.getElementById("clearOriginButton"),
 
     debugOutput: root.getElementById("debugOutput")
   };
@@ -55,19 +55,25 @@ export function bindWorkspacePanelEvents(ui, handlers = {}) {
     handlers.onClearBoundary?.();
   });
 
-  ui.clearOriginButton?.addEventListener("click", () => {
-    handlers.onClearOrigin?.();
-  });
-
   bindToggleGroup(ui.dayToggleGroup, "day", handlers.onToggleDay);
-  bindToggleGroup(ui.visitToggleGroup, "visitBucket", handlers.onToggleVisitBucket);
+  bindToggleGroup(
+    ui.appointmentTypeToggleGroup,
+    "appointmentType",
+    handlers.onToggleAppointmentType
+  );
   bindToggleGroup(ui.originTypeToggleGroup, "originType", handlers.onToggleOriginType);
 }
 
 export function renderWorkspaceFilters(ui, state) {
   renderDayToggles(ui.dayToggleGroup, state.refinements.days || []);
-  renderVisitToggles(ui.visitToggleGroup, state.refinements.visitBuckets || []);
-  renderOriginTypeToggles(ui.originTypeToggleGroup, state.refinements.originTypes || []);
+  renderAppointmentTypeToggles(
+    ui.appointmentTypeToggleGroup,
+    state.refinements.appointmentTypes || []
+  );
+  renderOriginTypeToggles(
+    ui.originTypeToggleGroup,
+    state.refinements.originTypes || []
+  );
 }
 
 export function renderWorkspaceResults(ui, results) {
@@ -77,21 +83,66 @@ export function renderWorkspaceResults(ui, results) {
   setText(ui.visibleMarkerCount, String(results.visibleCount || 0));
 }
 
+export function renderHeaderResults(
+  ui,
+  {
+    visibleRows = 0,
+    visibleOrigins = 0,
+    filteredRows = 0,
+    selectedBoundaryNames = [],
+    selectedDays = 0,
+    selectedAppointmentTypes = 0,
+    selectedOriginTypes = 0
+  } = {}
+) {
+  const activeFilters = selectedDays + selectedAppointmentTypes + selectedOriginTypes;
+  const countLabel = `${visibleRows.toLocaleString()} coordinates`;
+  const boundaryNames = Array.isArray(selectedBoundaryNames)
+    ? selectedBoundaryNames.filter(Boolean)
+    : [];
+
+  const parts = [];
+
+  if (visibleOrigins > 0) {
+    parts.push(`${visibleOrigins.toLocaleString()} origins`);
+  }
+
+  if (boundaryNames.length === 1) {
+    parts.push(boundaryNames[0]);
+  } else if (boundaryNames.length > 1) {
+    parts.push(`${boundaryNames.length} boundaries selected`);
+  }
+
+  if (activeFilters === 0) {
+    parts.push("blank until filtered");
+  } else if (visibleRows === 0 && visibleOrigins === 0) {
+    parts.push(`${filteredRows.toLocaleString()} filtered records`);
+  } else {
+    parts.push(`${activeFilters} active filter${activeFilters === 1 ? "" : "s"}`);
+  }
+
+  setText(ui.headerResultCount, countLabel);
+  setText(ui.headerResultMeta, parts.join(" • "));
+
+  if (ui.headerResultPill) {
+    ui.headerResultPill.classList.toggle(
+      "is-empty",
+      activeFilters === 0 || (visibleRows === 0 && visibleOrigins === 0)
+    );
+  }
+}
+
 export function renderWorkspaceSelection(
   ui,
   {
-    selectedBoundaryName = "None",
-    selectedOriginName = "None"
+    selectedBoundaryName = "None"
   } = {}
 ) {
   setText(ui.selectedBoundaryName, selectedBoundaryName || "None");
-  setText(ui.selectedOriginName, selectedOriginName || "None");
 }
 
 export function renderWorkspaceRuntimeStatus(ui, summary = {}) {
-  if (!summary?.updatedAt) {
-    return;
-  }
+  if (!summary?.updatedAt) return;
 
   setWorkspaceMessage(
     ui,
@@ -101,6 +152,7 @@ export function renderWorkspaceRuntimeStatus(ui, summary = {}) {
 
 export function setWorkspaceMessage(ui, text) {
   setText(ui.resultsMessage, text || "Ready.");
+  setText(ui.headerResultMeta, text || "Ready.");
 }
 
 function renderDayToggles(container, selectedValues) {
@@ -116,13 +168,16 @@ function renderDayToggles(container, selectedValues) {
   });
 }
 
-function renderVisitToggles(container, selectedValues) {
+function renderAppointmentTypeToggles(container, selectedValues) {
   renderToggleButtons({
     container,
-    options: VISIT_BUCKETS,
+    options: APPOINTMENT_TYPE_META,
     selectedValues,
-    className: "toggle-chip toggle-chip--visit",
-    datasetKey: "visitBucket"
+    className: "toggle-chip toggle-chip--appointment",
+    decorate(button, option) {
+      button.style.setProperty("--appointment-color", option.color);
+    },
+    datasetKey: "appointmentType"
   });
 }
 
@@ -147,9 +202,7 @@ function renderToggleButtons({
   decorate = null,
   datasetKey
 }) {
-  if (!container) {
-    return;
-  }
+  if (!container) return;
 
   const selected = new Set(selectedValues || []);
   container.innerHTML = "";
@@ -178,15 +231,11 @@ function renderToggleButtons({
 }
 
 function bindToggleGroup(container, datasetKey, handler) {
-  if (!container || typeof handler !== "function") {
-    return;
-  }
+  if (!container || typeof handler !== "function") return;
 
   container.addEventListener("click", (event) => {
     const button = event.target.closest(`button[data-${camelToKebab(datasetKey)}]`);
-    if (!button) {
-      return;
-    }
+    if (!button) return;
 
     handler(button.dataset[datasetKey]);
   });

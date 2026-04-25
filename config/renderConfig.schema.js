@@ -11,6 +11,7 @@ export const DEFAULT_RENDER_CONFIG = Object.freeze({
   filters: {
     keyword: "",
     organizers: [],
+    appointmentTypes: [],
     days: [],
     year: "all",
     visitBuckets: [],
@@ -19,6 +20,7 @@ export const DEFAULT_RENDER_CONFIG = Object.freeze({
 
   boundary: {
     selectedBoundaryKey: "",
+    selectedBoundaryKeys: [],
     fitToBoundary: false
   },
 
@@ -39,7 +41,7 @@ export const DEFAULT_RENDER_CONFIG = Object.freeze({
   },
 
   analytics: {
-    mode: "standard", // standard | origin_proximity | repeat_sites | temporal
+    mode: "standard",
     groupBy: null,
     sortBy: null
   }
@@ -52,29 +54,47 @@ export function cloneRenderConfig(base = DEFAULT_RENDER_CONFIG) {
 export function createRenderConfig(overrides = {}) {
   const base = cloneRenderConfig(DEFAULT_RENDER_CONFIG);
 
+  const boundaryOverrides = overrides.boundary || {};
+  const selectedBoundaryKeys = Array.isArray(boundaryOverrides.selectedBoundaryKeys)
+    ? [...boundaryOverrides.selectedBoundaryKeys]
+    : boundaryOverrides.selectedBoundaryKey
+      ? [boundaryOverrides.selectedBoundaryKey]
+      : [];
+
   return {
     ...base,
     ...overrides,
+
     meta: {
       ...base.meta,
       ...(overrides.meta || {})
     },
+
     filters: {
       ...base.filters,
       ...(overrides.filters || {})
     },
+
     boundary: {
       ...base.boundary,
-      ...(overrides.boundary || {})
+      ...boundaryOverrides,
+      selectedBoundaryKey:
+        boundaryOverrides.selectedBoundaryKey ||
+        selectedBoundaryKeys[0] ||
+        "",
+      selectedBoundaryKeys
     },
+
     origins: {
       ...base.origins,
       ...(overrides.origins || {})
     },
+
     visualization: {
       ...base.visualization,
       ...(overrides.visualization || {})
     },
+
     analytics: {
       ...base.analytics,
       ...(overrides.analytics || {})

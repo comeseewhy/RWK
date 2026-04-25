@@ -1,5 +1,36 @@
-import { createBoundaryIndex, findContainingBoundary, getBoundaryKey, getBoundaryName } from "./boundaries.js";
-import { firstNonEmpty, normalizeText, parsePossibleDate, toNumber } from "./utils.js";
+// workspace/runtimeBridge.js
+
+import {
+  createBoundaryIndex,
+  findContainingBoundary,
+  getBoundaryKey,
+  getBoundaryName
+} from "./boundaries.js";
+import {
+  firstNonEmpty,
+  normalizeText,
+  parsePossibleDate,
+  toNumber
+} from "./utils.js";
+
+const APPOINTMENT_TYPES = Object.freeze({
+  "bfqu2a3urejcnobl2p80tebo0g@group.calendar.google.com": {
+    key: "installers",
+    label: "Installers"
+  },
+  "e8gq6ptj73o1p36cm3cl6c42j4@group.calendar.google.com": {
+    key: "countertop_template",
+    label: "Countertop Template"
+  },
+  "5cel8t58jaldjfm4suvu64i6tg@group.calendar.google.com": {
+    key: "cabinet_delivery",
+    label: "Cabinet Delivery"
+  },
+  "v9tgaibikbcts6uu92lkum8qc0@group.calendar.google.com": {
+    key: "initial_template",
+    label: "Initial Template"
+  }
+});
 
 export function projectRuntimeForWorkspace(runtime) {
   const safeRuntime = {
@@ -17,6 +48,7 @@ export function projectRuntimeForWorkspace(runtime) {
   );
 
   const visitCounts = buildVisitCounts(candidateRows);
+
   candidateRows.forEach((row) => {
     row._visitCount = visitCounts.get(row._siteKey || "") || 0;
     row._visitBucket = getVisitBucket(row._visitCount);
@@ -47,6 +79,7 @@ function enrichCandidateRow(row, boundaryIndex) {
   const latitude = toNumber(
     row._latitude ?? row.latitude ?? row.lat ?? row.y ?? row.decimal_latitude
   );
+
   const longitude = toNumber(
     row._longitude ?? row.longitude ?? row.lng ?? row.lon ?? row.x ?? row.decimal_longitude
   );
@@ -65,6 +98,20 @@ function enrichCandidateRow(row, boundaryIndex) {
           )
         );
 
+  const calendarId = firstNonEmpty(
+    row._calendarId,
+    row.calendar_id,
+    row.organizer,
+    row.creator,
+    row.created_by
+  );
+
+  const appointmentMeta = getAppointmentMeta(
+    calendarId,
+    row._appointmentKey,
+    row._appointmentLabel
+  );
+
   const boundaryFeature =
     Number.isFinite(latitude) && Number.isFinite(longitude)
       ? findContainingBoundary(boundaryIndex, [longitude, latitude])
@@ -75,6 +122,7 @@ function enrichCandidateRow(row, boundaryIndex) {
 
   return {
     ...row,
+
     _latitude: latitude,
     _longitude: longitude,
     _hasCoordinates: Number.isFinite(latitude) && Number.isFinite(longitude),
@@ -89,6 +137,10 @@ function enrichCandidateRow(row, boundaryIndex) {
 
     _parsedDate: parsedDate,
     _year: row._year || (parsedDate ? String(parsedDate.getFullYear()) : ""),
+
+    _calendarId: calendarId,
+    _appointmentKey: appointmentMeta.key,
+    _appointmentLabel: appointmentMeta.label,
 
     _organizerText:
       firstNonEmpty(row._organizerText, row.organizer, row.calendar_id, row.creator) ||
@@ -155,13 +207,34 @@ function enrichOriginRow(origin, boundaryIndex) {
   };
 }
 
+function getAppointmentMeta(calendarId, existingKey = "", existingLabel = "") {
+  const raw = String(calendarId || "").trim();
+
+  if (existingKey && existingLabel) {
+    return {
+      key: existingKey,
+      label: existingLabel
+    };
+  }
+
+  if (!raw) {
+    return {
+      key: "unknown",
+      label: "Unknown"
+    };
+  }
+
+  return APPOINTMENT_TYPES[raw] || {
+    key: normalizeText(raw).replace(/[^\w]+/g, "_"),
+    label: raw
+  };
+}
+
 function buildVisitCounts(rows) {
   const counts = new Map();
 
   rows.forEach((row) => {
-    if (!row._siteKey) {
-      return;
-    }
+    if (!row._siteKey) return;
     counts.set(row._siteKey, (counts.get(row._siteKey) || 0) + 1);
   });
 
@@ -169,9 +242,7 @@ function buildVisitCounts(rows) {
 }
 
 function getVisitBucket(count) {
-  if (!Number.isFinite(count) || count <= 0) {
-    return "";
-  }
+  if (!Number.isFinite(count) || count <= 0) return "";
   return count > 10 ? "10" : String(count);
 }
 
@@ -224,15 +295,9 @@ function getTimeBucket(parsedDate) {
   const last30 = new Date(startOfToday);
   last30.setDate(last30.getDate() - 30);
 
-  if (parsedDate.getTime() >= startOfToday.getTime()) {
-    return "upcoming";
-  }
-  if (parsedDate.getTime() >= last7.getTime()) {
-    return "last_7_days";
-  }
-  if (parsedDate.getTime() >= last30.getTime()) {
-    return "last_30_days";
-  }
+  if (parsedDate.getTime() >= startOfToday.getTime()) return "upcoming";
+  if (parsedDate.getTime() >= last7.getTime()) return "last_7_days";
+  if (parsedDate.getTime() >= last30.getTime()) return "last_30_days";
 
   return "";
 }

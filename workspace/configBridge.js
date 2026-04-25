@@ -3,11 +3,12 @@
 export function configToWorkspaceState(config) {
   const next = {
     selection: {
-      boundaryKey: "",
+      boundaryKeys: [],
       originId: ""
     },
     refinements: {
       days: [],
+      appointmentTypes: [],
       visitBuckets: [],
       originTypes: []
     }
@@ -17,8 +18,10 @@ export function configToWorkspaceState(config) {
     return next;
   }
 
-  if (config.boundary?.selectedBoundaryKey) {
-    next.selection.boundaryKey = config.boundary.selectedBoundaryKey;
+  if (Array.isArray(config.boundary?.selectedBoundaryKeys)) {
+    next.selection.boundaryKeys = [...config.boundary.selectedBoundaryKeys].filter(Boolean);
+  } else if (config.boundary?.selectedBoundaryKey) {
+    next.selection.boundaryKeys = [config.boundary.selectedBoundaryKey];
   }
 
   if (config.origins?.selectedOriginId) {
@@ -27,6 +30,10 @@ export function configToWorkspaceState(config) {
 
   if (Array.isArray(config.filters?.days)) {
     next.refinements.days = [...config.filters.days];
+  }
+
+  if (Array.isArray(config.filters?.appointmentTypes)) {
+    next.refinements.appointmentTypes = [...config.filters.appointmentTypes];
   }
 
   if (Array.isArray(config.filters?.visitBuckets)) {

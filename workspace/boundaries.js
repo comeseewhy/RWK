@@ -8,7 +8,10 @@ export function createBoundaryIndex(boundariesGeojson) {
   const featuresByKey = new Map();
 
   features.forEach((feature) => {
-    featuresByKey.set(getBoundaryKey(feature), feature);
+    const key = getBoundaryKey(feature);
+    if (key) {
+      featuresByKey.set(key, feature);
+    }
   });
 
   return {
@@ -63,33 +66,38 @@ export function findContainingBoundary(featureIndex, lngLat) {
   return null;
 }
 
-export function getBoundaryStyle({ isSelected = false, count = 0 } = {}) {
+export function getBoundaryStyle({
+  isSelected = false,
+  activeCount = 0
+} = {}) {
+  const hasActivePoints = activeCount > 0;
+
   if (isSelected) {
     return {
-      color: "#0f766e",
-      weight: 2.8,
+      color: hasActivePoints ? "#b45309" : "#475569",
+      weight: 3.25,
       opacity: 1,
-      fillColor: count > 0 ? "#14b8a6" : "#cbd5e1",
-      fillOpacity: count > 0 ? 0.2 : 0.12
+      fillColor: hasActivePoints ? "#fbbf24" : "#cbd5e1",
+      fillOpacity: hasActivePoints ? 0.24 : 0.14
     };
   }
 
-  if (count > 0) {
+  if (hasActivePoints) {
     return {
       color: "#d97706",
-      weight: 1.8,
+      weight: 1.9,
       opacity: 1,
       fillColor: "#fbbf24",
-      fillOpacity: 0.1
+      fillOpacity: 0.11
     };
   }
 
   return {
     color: "#94a3b8",
-    weight: 1.2,
-    opacity: 0.95,
+    weight: 1.15,
+    opacity: 0.92,
     fillColor: "#e2e8f0",
-    fillOpacity: 0.06
+    fillOpacity: 0.045
   };
 }
 

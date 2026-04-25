@@ -1,28 +1,44 @@
 // workspace/filters.js
 
+const ENABLED_ORIGIN_TYPES = new Set(["warehouse", "showroom"]);
+
 export function computeWorkspaceView({
   runtime,
   config,
   refinements,
   selection
 }) {
-  const candidateRows = Array.isArray(runtime?.candidateRows) ? runtime.candidateRows : [];
-  const originRows = Array.isArray(runtime?.originRows) ? runtime.originRows : [];
+  const candidateRows = Array.isArray(runtime?.candidateRows)
+    ? runtime.candidateRows
+    : [];
+
+  const originRows = Array.isArray(runtime?.originRows)
+    ? runtime.originRows
+    : [];
+
+  const safeRefinements = normalizeRefinements(refinements);
+  const safeSelection = normalizeSelection(selection);
 
   const configFilteredRows = candidateRows.filter((row) =>
     matchesConfigFilters(row, config)
   );
 
+  const jobsAreEnabled =
+    safeRefinements.days.length > 0 ||
+    safeRefinements.appointmentTypes.length > 0;
+
   const refinementFilteredRows = configFilteredRows.filter((row) =>
-    matchesWorkspaceRefinements(row, refinements)
+    matchesWorkspaceRefinements(row, safeRefinements)
   );
 
-  const visibleRows = refinementFilteredRows.filter((row) =>
-    matchesBoundarySelection(row, selection)
+  const boundaryFilteredRows = refinementFilteredRows.filter((row) =>
+    matchesBoundarySelection(row, safeSelection)
   );
+
+  const visibleRows = jobsAreEnabled ? boundaryFilteredRows : [];
 
   const visibleOrigins = originRows.filter((origin) =>
-    matchesOriginVisibility(origin, refinements, selection)
+    matchesOriginVisibility(origin, safeRefinements)
   );
 
   return {
@@ -32,10 +48,39 @@ export function computeWorkspaceView({
     counts: {
       candidateCount: candidateRows.length,
       filteredCount: refinementFilteredRows.length,
-      boundaryCount: visibleRows.length,
+      boundaryCount: boundaryFilteredRows.length,
       visibleCount: visibleRows.length,
       visibleOriginCount: visibleOrigins.length
+    },
+    gates: {
+      jobsAreEnabled,
+      originsAreEnabled: safeRefinements.originTypes.length > 0,
+      markerSelectionEnabled: safeSelection.boundaryKeys.length > 0
     }
+  };
+}
+
+function normalizeRefinements(refinements = {}) {
+  return {
+    days: Array.isArray(refinements.days) ? refinements.days.filter(Boolean) : [],
+    appointmentTypes: Array.isArray(refinements.appointmentTypes)
+      ? refinements.appointmentTypes.filter(Boolean)
+      : [],
+    visitBuckets: [],
+    originTypes: Array.isArray(refinements.originTypes)
+      ? refinements.originTypes.filter((type) => ENABLED_ORIGIN_TYPES.has(type))
+      : []
+  };
+}
+
+function normalizeSelection(selection = {}) {
+  return {
+    boundaryKeys: Array.isArray(selection.boundaryKeys)
+      ? selection.boundaryKeys.filter(Boolean)
+      : selection.boundaryKey
+        ? [selection.boundaryKey]
+        : [],
+    originId: selection.originId || ""
   };
 }
 
@@ -43,12 +88,23 @@ function matchesConfigFilters(row, config) {
   if (!config) return true;
 
   const organizers = config?.filters?.organizers || [];
+  const appointmentTypes = config?.filters?.appointmentTypes || [];
   const timeWindow = config?.filters?.timeWindow || "all";
   const visitBuckets = config?.filters?.visitBuckets || [];
   const year = config?.filters?.year || "all";
-  const boundaryKey = config?.boundary?.selectedBoundaryKey || "";
+  const keyword = String(config?.filters?.keyword || "").trim().toLowerCase();
+
+  const configBoundaryKeys = Array.isArray(config?.boundary?.selectedBoundaryKeys)
+    ? config.boundary.selectedBoundaryKeys.filter(Boolean)
+    : config?.boundary?.selectedBoundaryKey
+      ? [config.boundary.selectedBoundaryKey]
+      : [];
 
   if (organizers.length > 0 && !organizers.includes(row._organizerKey)) {
+    return false;
+  }
+
+  if (appointmentTypes.length > 0 && !appointmentTypes.includes(row._appointmentKey)) {
     return false;
   }
 
@@ -60,11 +116,15 @@ function matchesConfigFilters(row, config) {
     return false;
   }
 
-  if (boundaryKey && row._boundaryKey !== boundaryKey) {
+  if (configBoundaryKeys.length > 0 && !configBoundaryKeys.includes(row._boundaryKey)) {
     return false;
   }
 
   if (timeWindow !== "all" && row._timeBucket !== timeWindow) {
+    return false;
+  }
+
+  if (keyword && !String(row._keywordBlob || "").includes(keyword)) {
     return false;
   }
 
@@ -77,8 +137,8 @@ function matchesWorkspaceRefinements(row, refinements) {
   }
 
   if (
-    refinements.visitBuckets.length > 0 &&
-    !refinements.visitBuckets.includes(row._visitBucket)
+    refinements.appointmentTypes.length > 0 &&
+    !refinements.appointmentTypes.includes(row._appointmentKey)
   ) {
     return false;
   }
@@ -87,25 +147,22 @@ function matchesWorkspaceRefinements(row, refinements) {
 }
 
 function matchesBoundarySelection(row, selection) {
-  if (!selection?.boundaryKey) return true;
-  return row._boundaryKey === selection.boundaryKey;
+  if (selection.boundaryKeys.length === 0) return true;
+  return selection.boundaryKeys.includes(row._boundaryKey);
 }
 
-function matchesOriginVisibility(origin, refinements, selection) {
+function matchesOriginVisibility(origin, refinements) {
   if (!origin?._isActive || !origin?._hasCoordinates) {
     return false;
   }
 
-  if (
-    refinements.originTypes.length > 0 &&
-    !refinements.originTypes.includes(origin._typeKey)
-  ) {
+  if (!ENABLED_ORIGIN_TYPES.has(origin._typeKey)) {
     return false;
   }
 
-  if (selection?.boundaryKey && origin._boundaryKey !== selection.boundaryKey) {
+  if (refinements.originTypes.length === 0) {
     return false;
   }
 
-  return true;
+  return refinements.originTypes.includes(origin._typeKey);
 }
