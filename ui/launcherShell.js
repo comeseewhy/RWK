@@ -1,7 +1,11 @@
 // ui/launcherShell.js
 
 import { buildAllActivityPreset } from "../config/presets.js";
-import { bindAnalysisBuilder, renderAnalysisBuilder } from "./analysisBuilder.js";
+import {
+  bindAnalysisBuilder,
+  getSavedTimeFrameConfig,
+  renderAnalysisBuilder
+} from "./analysisBuilder.js";
 import { clearConfig, setConfig } from "../state/session.js";
 
 export async function renderLauncherShell(rootId = "landing-root", options = {}) {
@@ -22,11 +26,7 @@ export async function renderLauncherShell(rootId = "landing-root", options = {})
 
   setViewMapDisabled(!runtimeData);
 
-  bindAnalysisBuilder({
-    onLaunch(config) {
-      launchWithConfig(config, { onOpenWorkspace });
-    }
-  });
+  bindAnalysisBuilder();
 }
 
 function buildLauncherMarkup(runtimeData = null, runtimeProgress = null) {
@@ -64,21 +64,18 @@ function buildLauncherMarkup(runtimeData = null, runtimeProgress = null) {
 
       <header class="launcher-hero">
         <p class="launcher-hero__kicker">RWK</p>
-        <h1 class="launcher-hero__title">Operational launcher</h1>
-        <p class="launcher-hero__subtitle">
-          Enter the workspace with the full map population, or build a time frame first
-          and open the map with that subset already isolated.
-        </p>
+        <h1 class="launcher-hero__title">Client map</h1>
       </header>
 
       <section class="launcher-entry-card" aria-labelledby="viewMapTitle">
         <div class="launcher-section-heading">
           <p class="launcher-section-heading__eyebrow">Map</p>
           <h2 id="viewMapTitle" class="launcher-section-heading__title">
-            View operational map
+            View map
           </h2>
           <p class="launcher-section-heading__description">
-            Open the full current workspace after the shared runtime is ready.
+            Open the full current map, or save a time frame below first to open
+            the map with that subset already applied.
           </p>
         </div>
 
@@ -101,7 +98,8 @@ function bindStaticLauncherEvents(root, options = {}) {
   const viewMapButton = root.querySelector("#viewMapButton");
 
   viewMapButton?.addEventListener("click", () => {
-    launchWithConfig(buildAllActivityPreset(), options);
+    const savedTimeFrameConfig = getSavedTimeFrameConfig();
+    launchWithConfig(savedTimeFrameConfig || buildAllActivityPreset(), options);
   });
 }
 
@@ -127,7 +125,7 @@ function setViewMapDisabled(disabled) {
     button.disabled = disabled;
   }
 
-  const builderButton = document.getElementById("builderLaunchButton");
+  const builderButton = document.getElementById("builderSaveButton");
   if (builderButton && disabled) {
     builderButton.disabled = true;
   }

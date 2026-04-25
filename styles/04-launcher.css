@@ -188,7 +188,7 @@
 }
 
 .launcher-feedback {
-  margin: 16px 0 0;
+  margin: 0;
   font-size: 0.92rem;
   line-height: 1.45;
   color: var(--color-muted);
@@ -312,6 +312,20 @@
   font-weight: 600;
 }
 
+.launcher-builder__summary-saved {
+  width: fit-content;
+  display: inline-flex;
+  align-items: center;
+  min-height: 26px;
+  padding: 5px 9px;
+  border-radius: 999px;
+  background: rgba(15, 118, 110, 0.1);
+  color: var(--color-success);
+  font-size: 0.8rem;
+  font-weight: 850;
+  line-height: 1.1;
+}
+
 .launcher-builder__empty {
   display: inline-flex;
   align-items: center;
@@ -398,9 +412,11 @@
 }
 
 .launcher-chip-group--dates {
-  max-height: 220px;
+  display: grid;
+  gap: 12px;
+  max-height: 300px;
   overflow: auto;
-  padding: 2px 2px 4px;
+  padding: 2px 4px 4px 2px;
 }
 
 .launcher-chip {
@@ -463,6 +479,31 @@
   color: var(--color-primary-strong);
 }
 
+/* Date week groups */
+
+.launcher-date-week {
+  display: grid;
+  gap: 8px;
+  padding: 10px;
+  border: 1px solid #eef2f7;
+  border-radius: var(--radius-md);
+  background: rgba(248, 250, 252, 0.72);
+}
+
+.launcher-date-week__heading {
+  font-size: 0.78rem;
+  font-weight: 850;
+  color: var(--color-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.launcher-date-week__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
 /* Responsive */
 
 @media (max-width: 720px) {
@@ -499,12 +540,68 @@
     border-radius: var(--radius-lg);
   }
 
+  .launcher-hero {
+    padding-block: 20px;
+  }
+
   .launcher-builder__grid {
     grid-template-columns: 1fr;
   }
 
   .launcher-view-map-button,
-  .launcher-builder__save {
+  .launcher-builder__save,
+  .launcher-builder__actions .button {
     width: 100%;
+  }
+
+  .launcher-builder__actions {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
+  .launcher-chip-group--dates {
+    max-height: 340px;
+  }
+
+  .launcher-date-week {
+    padding: 9px;
+  }
+
+  .launcher-date-week__chips {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 7px;
+  }
+
+  .launcher-date-week__chips .launcher-chip {
+    width: 100%;
+    justify-content: space-between;
+    padding-inline: 10px;
+  }
+}
+
+@media (max-width: 420px) {
+  .launcher-runtime-rail__status {
+    min-width: 0;
+  }
+
+  .launcher-hero__title {
+    font-size: 1.65rem;
+  }
+
+  .launcher-section-heading__title {
+    font-size: 1.08rem;
+  }
+
+  .launcher-section-heading__description {
+    font-size: 0.9rem;
+  }
+
+  .launcher-chip-group--dates {
+    max-height: 360px;
+  }
+
+  .launcher-date-week__chips {
+    grid-template-columns: 1fr;
   }
 }

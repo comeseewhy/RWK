@@ -33,7 +33,7 @@ export function renderAnalysisBuilder(runtimeData = null) {
         </h2>
         <p class="launcher-section-heading__description">
           Select one year, optionally narrow to one month, then optionally choose
-          one or more dates. Leave month or date blank to keep the selection broader.
+          one or more dates. Save the time frame here, then use View map above.
         </p>
       </div>
 
@@ -63,7 +63,7 @@ export function renderAnalysisBuilder(runtimeData = null) {
           <div
             id="builderDateGroup"
             class="launcher-chip-group launcher-chip-group--dates"
-            aria-label="Available dates"
+            aria-label="Available dates grouped by week"
           ></div>
         </div>
       </div>
@@ -78,12 +78,12 @@ export function renderAnalysisBuilder(runtimeData = null) {
 
       <div class="launcher-builder__actions">
         <button
-          id="builderLaunchButton"
+          id="builderSaveButton"
           class="button button--primary launcher-builder__save"
           type="button"
           disabled
         >
-          Save time frame and view map
+          Save time frame
         </button>
 
         <button
@@ -100,13 +100,13 @@ export function renderAnalysisBuilder(runtimeData = null) {
   `;
 }
 
-export function bindAnalysisBuilder({ onLaunch } = {}) {
+export function bindAnalysisBuilder() {
   const yearGroup = document.getElementById("builderYearGroup");
   const monthField = document.getElementById("builderMonthField");
   const monthGroup = document.getElementById("builderMonthGroup");
   const dateField = document.getElementById("builderDateField");
   const dateGroup = document.getElementById("builderDateGroup");
-  const launchButton = document.getElementById("builderLaunchButton");
+  const saveButton = document.getElementById("builderSaveButton");
   const clearButton = document.getElementById("builderClearButton");
   const summary = document.getElementById("builderSelectionSummary");
   const feedback = document.getElementById("builderFeedback");
@@ -122,6 +122,10 @@ export function bindAnalysisBuilder({ onLaunch } = {}) {
     builderState.dates = [];
     builderState.savedConfig = null;
 
+    if (feedback) {
+      feedback.textContent = "";
+    }
+
     syncBuilderUi();
   });
 
@@ -135,6 +139,10 @@ export function bindAnalysisBuilder({ onLaunch } = {}) {
     builderState.dates = [];
     builderState.savedConfig = null;
 
+    if (feedback) {
+      feedback.textContent = "";
+    }
+
     syncBuilderUi();
   });
 
@@ -145,23 +153,23 @@ export function bindAnalysisBuilder({ onLaunch } = {}) {
     toggleDate(button.dataset.builderDate || "");
     builderState.savedConfig = null;
 
+    if (feedback) {
+      feedback.textContent = "";
+    }
+
     syncBuilderUi();
   });
 
-  launchButton?.addEventListener("click", () => {
+  saveButton?.addEventListener("click", () => {
     try {
       const config = buildTimeFrameRenderConfig(builderState);
       builderState.savedConfig = config;
 
       if (feedback) {
-        feedback.textContent = `Saved: ${config.meta.label}`;
+        feedback.textContent = `Time frame saved: ${config.meta.label}. Use View map to open this subset.`;
       }
 
       syncBuilderUi();
-
-      if (typeof onLaunch === "function") {
-        onLaunch(config);
-      }
     } catch (error) {
       if (feedback) {
         feedback.textContent = error.message;
@@ -173,7 +181,7 @@ export function bindAnalysisBuilder({ onLaunch } = {}) {
     builderState = createEmptyBuilderState();
 
     if (feedback) {
-      feedback.textContent = "Time frame selection cleared.";
+      feedback.textContent = "Time frame selection cleared. View map will open all activity.";
     }
 
     syncBuilderUi();
@@ -215,14 +223,21 @@ export function bindAnalysisBuilder({ onLaunch } = {}) {
       syncActiveButtons(dateGroup, "builderDate", builderState.dates);
     }
 
-    if (launchButton) {
-      launchButton.disabled = !builderState.year;
+    if (saveButton) {
+      saveButton.disabled = !builderState.year || Boolean(builderState.savedConfig);
+      saveButton.textContent = builderState.savedConfig
+        ? "Time frame saved"
+        : "Save time frame";
     }
 
     if (summary) {
       summary.innerHTML = buildSelectionSummaryHtml();
     }
   }
+}
+
+export function getSavedTimeFrameConfig() {
+  return builderState.savedConfig || null;
 }
 
 export function buildTimeFrameRenderConfig(state = builderState) {
@@ -265,7 +280,7 @@ export function buildTimeFrameRenderConfig(state = builderState) {
       showBoundaries: true,
       showJobs: true,
       showOrigins: true,
-      fitToVisible: true
+      fitToVisible: false
     },
     analytics: {
       mode: "time_frame",
@@ -451,23 +466,38 @@ function renderDateButtons(yearMonthKey, dates) {
     return "";
   }
 
-  return dates
-    .map((isoDate) => {
-      const date = new Date(`${isoDate}T00:00:00`);
-      const label = Number.isNaN(date.getTime())
-        ? isoDate
-        : new Intl.DateTimeFormat(undefined, {
-            weekday: "short",
-            month: "short",
-            day: "numeric"
-          }).format(date);
+  const weekGroups = groupDatesByWeek(dates);
 
-      return renderChipButton({
-        datasetKey: "builderDate",
-        value: isoDate,
-        label,
-        count: getCount(`date:${isoDate}`)
-      });
+  return weekGroups
+    .map((group) => {
+      const chips = group.dates
+        .map((isoDate) => {
+          const date = new Date(`${isoDate}T00:00:00`);
+          const label = Number.isNaN(date.getTime())
+            ? isoDate
+            : new Intl.DateTimeFormat(undefined, {
+                weekday: "short",
+                month: "short",
+                day: "numeric"
+              }).format(date);
+
+          return renderChipButton({
+            datasetKey: "builderDate",
+            value: isoDate,
+            label,
+            count: getCount(`date:${isoDate}`)
+          });
+        })
+        .join("");
+
+      return `
+        <section class="launcher-date-week" aria-label="${escapeHtml(group.label)}">
+          <div class="launcher-date-week__heading">${escapeHtml(group.label)}</div>
+          <div class="launcher-date-week__chips">
+            ${chips}
+          </div>
+        </section>
+      `;
     })
     .join("");
 }
@@ -484,6 +514,52 @@ function renderChipButton({ datasetKey, value, label, count }) {
       <span class="launcher-chip__count">${Number(count || 0).toLocaleString()}</span>
     </button>
   `;
+}
+
+function groupDatesByWeek(dates) {
+  const groups = new Map();
+
+  dates.forEach((isoDate) => {
+    const date = new Date(`${isoDate}T00:00:00`);
+    if (Number.isNaN(date.getTime())) return;
+
+    const weekStart = getWeekStartMonday(date);
+    const weekKey = toIsoDate(weekStart);
+    const label = `Week of ${new Intl.DateTimeFormat(undefined, {
+      month: "short",
+      day: "numeric"
+    }).format(weekStart)}`;
+
+    if (!groups.has(weekKey)) {
+      groups.set(weekKey, {
+        key: weekKey,
+        label,
+        dates: []
+      });
+    }
+
+    groups.get(weekKey).dates.push(isoDate);
+  });
+
+  return [...groups.values()].sort((a, b) => a.key.localeCompare(b.key));
+}
+
+function getWeekStartMonday(date) {
+  const copy = new Date(date);
+  copy.setHours(0, 0, 0, 0);
+
+  const day = copy.getDay();
+  const offset = day === 0 ? -6 : 1 - day;
+  copy.setDate(copy.getDate() + offset);
+
+  return copy;
+}
+
+function toIsoDate(date) {
+  const year = date.getFullYear();
+  const month = normalizeMonth(date.getMonth() + 1);
+  const day = normalizeDay(date.getDate());
+  return `${year}-${month}-${day}`;
 }
 
 function buildSelectionSummaryHtml() {
@@ -507,12 +583,16 @@ function buildSelectionSummaryHtml() {
   }
 
   const count = getCurrentSelectionCount();
+  const savedNote = builderState.savedConfig
+    ? `<span class="launcher-builder__summary-saved">Saved for View map.</span>`
+    : `<span class="launcher-builder__summary-meta">Not saved yet.</span>`;
 
   return `
     <span>${parts.join(" / ")}</span>
     <span class="launcher-builder__summary-meta">
       ${count.toLocaleString()} matching record${count === 1 ? "" : "s"} before map-side refinements.
     </span>
+    ${savedNote}
   `;
 }
 

@@ -1,5 +1,5 @@
 RWK Project Export
-Generated: 2026-04-25 16:35:44
+Generated: 2026-04-25 17:02:41
 Project Root: C:\Users\timet\OneDrive\Documents\GitHub\RWK
 File Count: 58
 
@@ -1715,437 +1715,1519 @@ The manifest file must be valid JSON.
 
 ===== docs\last chat.md =====
 
-Okay, there's been some work done recently on the launcher. It seems to be working well, but I've just tested the map view itself on mobile, and it's somewhat lacking. I just need to straighten out some details. So first thing, I'll try and send a picture. I'll attach a picture as well, if possible, but it appears that the, well, I guess first off, the title and the text description and the back to launcher button and the zero coordinates or the, you know, N coordinates function, it doesn't really mesh very well. It doesn't, it's not compact or elegant on mobile view. So that's one thing to consider. On mobile view as well, initially when I considered the debug functionality, I suggested that it always remains at the bottom of the map, but that's because when I was testing on desktop, the map is the furthest content or it's the furthest object. It's the lowest object on the field. But on mobile view, all of the panels actually exist underneath of the map, and debug is underneath the map as well, but higher than all of the panels. And so I'm just thinking that the arrangement or like the existing location is fantastic for the panels on desktop, but it's not necessarily helpful on mobile. And it would be much more helpful if the panels were situated underneath the header bar, which needs its own refinement, but above the map, such that I can scroll down and the map is the second last object to be listed, and then the debug field constantly being iterated is underneath the map on mobile view. So I'm hoping that we can strategize to make the, I mean, first off, the title and description are not really necessary in the first place. They could exist, but they can just be much more refined. But I need to make sure that all of the objects in the header bar are able to be spaced out according to the amount of space regarding that's available depending on the screen. So it all needs to be flush and simple and minimal in size overall. And with that, I'm wondering if we can consider what updates would be needed. Again, like the desktop view has pretty sound functionality at this time, but it doesn't look great on mobile. So I'll try and attach a picture so you know what I mean, and perhaps we can conjure up how to make it more optimal visually.
+Okay, the last chat revolved around visual updates, and they were completed pretty appropriately. They seemed to work really well. The zoom is great, or good enough anyway. So I'd like to flip back to the launcher. I just want to hone in on two aspects here. The first block, the operational launcher block, I just don't think it's necessary to have that description, and I also don't like the title operational launcher. I think let's just remove the entire, like, descriptive text and just change the type, change the blocks so that it only contains RWK and then the title, and let's change the title from operational launcher to maybe perhaps client map. Yeah, client map. That'll be fine. It's really just something that describes it in one phrase, what this project is about. Client map. But then I wanna hone in on the builder, specifically, well, I guess the buttons and as they relate to the map. So the builder block is quite good, however, I think, especially on mobile view, but in general, it's not a very user-friendly decision tree for selecting dates. I think when I go through the options, by the time, especially when I'm on mobile, by the time I get to the date tree, the fields are just categorized one, like two at a time, two per row, and scrolling down. I guess it would be helpful to break them up into like week by week in some way, like a line break in between each week or something of the sort. I just think that there could be a more intuitive and helpful way to sort of break down the analysis. But then when it comes to the button itself, the button functionality, I don't want two buttons to view the map. Currently, the builder has a button that says save timeframe and view map. And then when you use the builder button, it opens that specific subset of data. Rather, I would like the blue, the main button on the builder block to be save timeframe, and then once I click that, the decision tree, all of the choices the user made are saved, and the button, maybe the text in the button changes from save timeframe to timeframe saved. And then the only button that can be used At that point in the building block would be clear selection, and then that removes the decision tree and it starts fresh. But essentially, the functionality should be that the user uses view map, and if there's no time frame saved in the building block, in the builder block, then the entire population is opened. And if there is a block saved, or like a time frame saved in the builder block, then only that subset opens. But view map should be sourced or housed in specifically one location. So I am going to have to ask for your help revitalizing that to Just make the date decision tree a little more user-friendly and to make sure that the operational map itself is, like the view map button is housed in just the map block, and that the description changes to be more relevant for the map block itself, and then the description is removed altogether for the RWK block and the title is changed. Can you help map out or like plan how these changes would be made? Thank you for your help.
 
 ---
 
-Yes â€” this is mainly a workspace shell + responsive CSS phase.
+Yes. This is a clean launcher-only phase. Based on the current export, the relevant files are ui/launcherShell.js, ui/analysisBuilder.js, and styles/04-launcher.css; possibly styles/09-responsive.css for small mobile overrides.
 
-Your current shell renders in this order: header â†’ map/debug column â†’ panels, which explains why mobile puts controls below the map and debug above the controls. The current renderWorkspaceShell.js structure confirms that ordering.
+Intended design update
 
-Recommended next update:
+The launcher should become:
 
-workspace/renderWorkspaceShell.js
-Reorder the mobile-friendly DOM to support:
-compact header
-controls/panels
-map
-debug
-Use CSS grid on desktop to keep the existing desktop layout visually intact.
-styles/05-workspace-shell.css
-Make the header much more compact on mobile.
-Hide or reduce the subtitle on narrow screens.
-Convert the status pill + back button into a tighter responsive row.
-Define desktop layout as map-left / panel-right, but mobile as header â†’ panel â†’ map â†’ debug.
-styles/06-workspace-panels.css
-Make panel cards denser on mobile.
-Allow toggle rows to scroll horizontally or wrap more compactly.
-Reduce padding and title spacing.
-styles/08-debug.css
-Keep debug after the map on mobile.
-Make it less visually dominant and easier to scroll.
-styles/09-responsive.css
-Clean up or override any old mobile rules that conflict with the new workspace ordering.
+Hero block
+Eyebrow: RWK
+Title: Client map
+No descriptive paragraph.
+Map block
+The only place with a View map button.
+Description should explain:
+Opens all records if no saved builder time frame exists.
+Opens the saved time-frame subset if one has been saved.
+Builder block
+Used only to prepare/save a time frame.
+Primary button changes from Save time frame and view map to Save time frame.
+Clicking it saves the config but does not open the map.
+After saving, button state changes to something like Time frame saved.
+Clear selection resets the builder and removes the saved builder config.
+Dates should be visually grouped by week for easier mobile scanning.
+Functional change
 
-I would not change the controller/filter/map logic for this push. This should be a presentation-only refinement unless we discover the DOM reorder breaks a selector, which it should not because IDs remain the same.
+Current flow:
 
-Next clean implementation target: replace workspace/renderWorkspaceShell.js, styles/05-workspace-shell.css, styles/06-workspace-panels.css, styles/08-debug.css, and likely styles/09-responsive.css.
+builder selection â†’ Save time frame and view map â†’ workspace opens immediately
+
+New flow:
+
+builder selection â†’ Save time frame â†’ View map button opens selected subset
+
+Or:
+
+no builder selection â†’ View map button opens all activity
+
+File-level plan
+ui/launcherShell.js
+
+Change the hero markup:
+
+<h1 class="launcher-hero__title">Client map</h1>
+
+Remove the hero subtitle entirely.
+
+Update the map card description to clarify that View map is the single map entry point.
+
+Change bindStaticLauncherEvents() so the map button checks whether the builder has a saved config. If yes, launch that. If not, launch buildAllActivityPreset().
+
+This file should no longer receive onLaunch(config) from the builder. Instead, it should receive a saved-builder callback or query the builderâ€™s saved config.
+
+ui/analysisBuilder.js
+
+Change the builder button label:
+
+Save time frame
+Give feedback
+
+Change button behavior:
+
+Build the time-frame config.
+Store it in builderState.savedConfig.
+Update feedback.
+Do not call onLaunch.
+
+Expose a helper such as:
+
+export function getSavedTimeFrameConfig() {
+  return builderState.savedConfig;
+}
+
+Also update clear behavior so it sets:
+
+builderState.savedConfig = null;
+
+Improve date rendering by grouping dates by ISO week. Instead of rendering one long wrap-grid of date chips, renderDateButtons() should return grouped blocks like:
+
+<div class="launcher-date-week">
+  <div class="launcher-date-week__heading">Week of Apr 6</div>
+  <div class="launcher-date-week__chips">...</div>
+</div>
+Give feedback
+styles/04-launcher.css
+
+Add styles for the week grouping:
+
+.launcher-date-week {
+  display: grid;
+  gap: 8px;
+  padding: 10px;
+  border: 1px solid #eef2f7;
+  border-radius: var(--radius-md);
+  background: rgba(248, 250, 252, 0.72);
+}
+
+.launcher-date-week__heading {
+  font-size: 0.78rem;
+  font-weight: 850;
+  color: var(--color-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.launcher-date-week__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+Also adjust .launcher-chip-group--dates so it becomes a vertical grouped list instead of only a wrapping chip container.
+
+Testing checklist
+
+After replacement:
+
+Launcher hero says RWK and Client map.
+Hero has no description.
+Map block has the only View map button.
+Builder button says Save time frame.
+Saving a builder selection does not open the map.
+Button/feedback confirms the time frame was saved.
+View map opens the saved time-frame subset.
+Clear selection resets the builder.
+After clearing, View map opens all activity.
+Date options are grouped by week and easier to scan on mobile.
+
+Next best implementation cut: comprehensively replace ui/analysisBuilder.js, ui/launcherShell.js, and styles/04-launcher.css.
 
 ---
 
-Okay, understood. Are you able to comprehensively update all of the recommended files? Remember, full solutions, full solutions are best. I really appreciate the work. Thank you.
+Okay, I have attached the context for the plan. Can you help me comprehensively update all files related to this batch of updates?
 
 ---
 
-Yes. Replace these five files. This keeps the desktop layout intact while making mobile order: header â†’ panels â†’ map â†’ debug. Based on the current uploaded export structure.
+Yes â€” this batch should replace these three files fully:
 
-workspace/renderWorkspaceShell.js
-// workspace/renderWorkspaceShell.js
+ui/analysisBuilder.js
+ui/launcherShell.js
+styles/04-launcher.css
 
-export function renderWorkspaceShell() {
+This implements the launcher hero rename, removes the hero description, makes View map the only workspace launch button, changes the builder into a save-only flow, and groups date choices by week for better mobile scanning.
+
+Because the full files are long, Iâ€™ll provide them in the next message as complete replacement versions.
+
+---
+
+Sounds good. Can you begin providing them in this next message?
+
+---
+
+Yes. Begin with these two full replacements.
+
+ui/launcherShell.js
+// ui/launcherShell.js
+
+import { buildAllActivityPreset } from "../config/presets.js";
+import {
+  bindAnalysisBuilder,
+  getSavedTimeFrameConfig,
+  renderAnalysisBuilder
+} from "./analysisBuilder.js";
+import { clearConfig, setConfig } from "../state/session.js";
+
+export async function renderLauncherShell(rootId = "landing-root", options = {}) {
+  const {
+    runtimeData = null,
+    runtimeProgress = null,
+    onOpenWorkspace = null
+  } = options;
+
+  const root = document.getElementById(rootId);
+
+  if (!root) {
+    throw new Error(`Launcher root #${rootId} not found.`);
+  }
+
+  root.innerHTML = buildLauncherMarkup(runtimeData, runtimeProgress);
+  bindStaticLauncherEvents(root, { onOpenWorkspace });
+
+  setViewMapDisabled(!runtimeData);
+
+  bindAnalysisBuilder();
+}
+
+function buildLauncherMarkup(runtimeData = null, runtimeProgress = null) {
+  const summary = getRuntimeSummary(runtimeData);
+  const progress = normalizeRuntimeProgress(runtimeProgress, runtimeData);
+  const isReady = Boolean(runtimeData);
+  const isError = progress.step === "error";
+
   return `
-    <div class="app-shell workspace-shell">
-      <header class="topbar">
-        <div class="topbar__title-wrap">
-          <p class="topbar__eyebrow">RWK</p>
-          <h1 class="topbar__title">Operational workspace</h1>
-          <p class="topbar__subtitle">
-            Spatial review, refinement, and boundary-driven inspection.
+    <section class="launcher-shell">
+      <aside
+        id="launcherRuntimeRail"
+        class="launcher-runtime-rail ${isReady ? "is-ready" : ""} ${isError ? "is-error" : ""}"
+        aria-label="Runtime initialization status"
+      >
+        <div class="launcher-runtime-rail__track" aria-hidden="true">
+          <span
+            id="launcherRuntimeRailFill"
+            class="launcher-runtime-rail__fill"
+            style="width: ${escapeHtml(String(progress.percent))}%"
+          ></span>
+        </div>
+
+        <div class="launcher-runtime-rail__content">
+          <span class="launcher-runtime-rail__status">
+            <span class="launcher-runtime-rail__dot" aria-hidden="true"></span>
+            <span id="launcherRuntimeRailLabel">${escapeHtml(progress.label)}</span>
+          </span>
+
+          <span class="launcher-runtime-rail__meta">
+            ${renderRuntimeRailMeta(summary, isReady)}
+          </span>
+        </div>
+      </aside>
+
+      <header class="launcher-hero">
+        <p class="launcher-hero__kicker">RWK</p>
+        <h1 class="launcher-hero__title">Client map</h1>
+      </header>
+
+      <section class="launcher-entry-card" aria-labelledby="viewMapTitle">
+        <div class="launcher-section-heading">
+          <p class="launcher-section-heading__eyebrow">Map</p>
+          <h2 id="viewMapTitle" class="launcher-section-heading__title">
+            View map
+          </h2>
+          <p class="launcher-section-heading__description">
+            Open the full current map, or save a time frame below first to open
+            the map with that subset already applied.
           </p>
         </div>
 
-        <div class="topbar__mobile-row">
-          <div class="topbar__status" id="headerResultPill" aria-live="polite">
-            <span id="headerResultCount" class="topbar__status-count">0 coordinates</span>
-            <span id="headerResultMeta" class="topbar__status-meta">Waiting for filters</span>
-          </div>
+        <button
+          id="viewMapButton"
+          class="button button--primary launcher-view-map-button"
+          type="button"
+          ${isReady ? "" : "disabled"}
+        >
+          View map
+        </button>
+      </section>
 
-          <div class="topbar__actions">
-            <button
-              id="backToLauncherButton"
-              class="button topbar__back-button"
-              type="button"
-              aria-label="Back to launcher"
-            >
-              Back to launcher
-            </button>
-          </div>
-        </div>
-      </header>
-
-      <main class="layout">
-        <aside class="panel" aria-label="Workspace controls">
-          <section class="panel-card" aria-labelledby="filtersCardTitle">
-            <h2 id="filtersCardTitle" class="panel-card__title">Population filters</h2>
-
-            <div class="form-grid">
-              <div class="form-field">
-                <span class="form-label">Day of week</span>
-                <div
-                  id="dayToggleGroup"
-                  class="toggle-group"
-                  aria-label="Day of week filters"
-                ></div>
-              </div>
-            </div>
-          </section>
-
-          <section class="panel-card" aria-labelledby="originsCardTitle">
-            <h2 id="originsCardTitle" class="panel-card__title">Origins</h2>
-
-            <div class="form-grid">
-              <div class="form-field">
-                <span class="form-label">Origin type</span>
-                <div
-                  id="originTypeToggleGroup"
-                  class="toggle-group"
-                  aria-label="Origin type filters"
-                ></div>
-              </div>
-            </div>
-          </section>
-
-          <section class="panel-card" aria-labelledby="appointmentCardTitle">
-            <h2 id="appointmentCardTitle" class="panel-card__title">Appointment</h2>
-
-            <div class="form-grid">
-              <div class="form-field">
-                <span class="form-label">Appointment type</span>
-                <div
-                  id="appointmentTypeToggleGroup"
-                  class="toggle-group"
-                  aria-label="Appointment type filters"
-                ></div>
-              </div>
-            </div>
-          </section>
-
-          <section class="panel-card" aria-labelledby="selectionCardTitle">
-            <h2 id="selectionCardTitle" class="panel-card__title">Selection</h2>
-
-            <dl class="stats-list">
-              <div class="stats-row">
-                <dt>Selected boundary</dt>
-                <dd id="selectedBoundaryName">None</dd>
-              </div>
-            </dl>
-
-            <div class="button-row">
-              <button id="clearBoundaryButton" class="button" type="button">
-                Clear boundary
-              </button>
-            </div>
-          </section>
-        </aside>
-
-        <section class="map-column" aria-label="Map and diagnostics">
-          <section class="map-section" aria-label="Map section">
-            <div id="map" aria-label="Map"></div>
-          </section>
-
-          <section class="debug-strip" aria-labelledby="debugCardTitle">
-            <h2 id="debugCardTitle" class="debug-strip__title">Debug</h2>
-            <pre id="debugOutput" class="debug-output">Starting...</pre>
-          </section>
-        </section>
-      </main>
-    </div>
+      ${renderAnalysisBuilder(runtimeData)}
+    </section>
   `;
 }
-styles/05-workspace-shell.css
-.topbar {
-  position: sticky;
-  top: 0;
-  z-index: 1000;
+
+function bindStaticLauncherEvents(root, options = {}) {
+  const viewMapButton = root.querySelector("#viewMapButton");
+
+  viewMapButton?.addEventListener("click", () => {
+    const savedTimeFrameConfig = getSavedTimeFrameConfig();
+    launchWithConfig(savedTimeFrameConfig || buildAllActivityPreset(), options);
+  });
+}
+
+function launchWithConfig(config, options = {}) {
+  try {
+    clearConfig();
+    setConfig(config);
+
+    if (typeof options.onOpenWorkspace === "function") {
+      options.onOpenWorkspace(config);
+      return;
+    }
+
+    window.location.href = "./workspace.html";
+  } catch (error) {
+    console.error("[RWK] failed to launch workspace:", error);
+  }
+}
+
+function setViewMapDisabled(disabled) {
+  const button = document.getElementById("viewMapButton");
+  if (button) {
+    button.disabled = disabled;
+  }
+
+  const builderButton = document.getElementById("builderSaveButton");
+  if (builderButton && disabled) {
+    builderButton.disabled = true;
+  }
+}
+
+function renderRuntimeRailMeta(summary, isReady) {
+  if (!isReady) {
+    return "Map access unlocks when runtime is ready.";
+  }
+
+  return [
+    `${summary.eventsCount.toLocaleString()} events`,
+    `${summary.joinedCount.toLocaleString()} joined`,
+    `${summary.candidateCount.toLocaleString()} coordinate-valid`,
+    summary.updatedAt ? `updated ${formatRuntimeTimestamp(summary.updatedAt)}` : ""
+  ]
+    .filter(Boolean)
+    .map(escapeHtml)
+    .join(" Â· ");
+}
+
+function normalizeRuntimeProgress(progress, runtimeData) {
+  if (runtimeData) {
+    return {
+      step: "complete",
+      label: "Runtime ready",
+      percent: 100
+    };
+  }
+
+  return {
+    step: progress?.step || "starting",
+    label: progress?.label || "Initializing runtime...",
+    percent: Number.isFinite(progress?.percent) ? progress.percent : 0
+  };
+}
+
+function getRuntimeSummary(runtimeData) {
+  if (!runtimeData || typeof runtimeData !== "object") {
+    return {
+      eventsCount: 0,
+      joinedCount: 0,
+      candidateCount: 0,
+      updatedAt: ""
+    };
+  }
+
+  const summary = runtimeData.summary || {};
+
+  return {
+    eventsCount: Number.isFinite(summary.eventsCount) ? summary.eventsCount : 0,
+    joinedCount: Number.isFinite(summary.joinedCount) ? summary.joinedCount : 0,
+    candidateCount: Number.isFinite(summary.candidateCount) ? summary.candidateCount : 0,
+    updatedAt: summary.updatedAt || runtimeData.manifest?.updated_at || ""
+  };
+}
+
+function formatRuntimeTimestamp(value) {
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    return value;
+  }
+
+  return new Intl.DateTimeFormat(undefined, {
+    dateStyle: "medium",
+    timeStyle: "short"
+  }).format(date);
+}
+
+function escapeHtml(value) {
+  return String(value ?? "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#39;");
+}
+ui/analysisBuilder.js
+// ui/analysisBuilder.js
+
+import { createRenderConfig } from "../config/renderConfig.schema.js";
+
+const MONTH_LABELS = Object.freeze([
+  "January",
+  "February",
+  "March",
+  "April",
+  "May",
+  "June",
+  "July",
+  "August",
+  "September",
+  "October",
+  "November",
+  "December"
+]);
+
+let builderState = createEmptyBuilderState();
+let builderDateIndex = createEmptyDateIndex();
+
+export function renderAnalysisBuilder(runtimeData = null) {
+  builderState = createEmptyBuilderState();
+  builderDateIndex = buildDateIndex(runtimeData);
+
+  return `
+    <section class="launcher-builder" aria-labelledby="analysisBuilderTitle">
+      <div class="launcher-section-heading">
+        <p class="launcher-section-heading__eyebrow">Builder</p>
+        <h2 id="analysisBuilderTitle" class="launcher-section-heading__title">
+          Build a time frame
+        </h2>
+        <p class="launcher-section-heading__description">
+          Select one year, optionally narrow to one month, then optionally choose
+          one or more dates. Save the time frame here, then use View map above.
+        </p>
+      </div>
+
+      <div class="launcher-builder__tree">
+        <div class="launcher-field">
+          <span class="launcher-label">Year</span>
+          <div
+            id="builderYearGroup"
+            class="launcher-chip-group launcher-chip-group--tree"
+            aria-label="Available years"
+          >
+            ${renderYearButtons()}
+          </div>
+        </div>
+
+        <div class="launcher-field" id="builderMonthField" hidden>
+          <span class="launcher-label">Month</span>
+          <div
+            id="builderMonthGroup"
+            class="launcher-chip-group launcher-chip-group--tree"
+            aria-label="Available months"
+          ></div>
+        </div>
+
+        <div class="launcher-field" id="builderDateField" hidden>
+          <span class="launcher-label">Date</span>
+          <div
+            id="builderDateGroup"
+            class="launcher-chip-group launcher-chip-group--dates"
+            aria-label="Available dates grouped by week"
+          ></div>
+        </div>
+      </div>
+
+      <div
+        id="builderSelectionSummary"
+        class="launcher-builder__summary"
+        aria-live="polite"
+      >
+        No time frame selected yet.
+      </div>
+
+      <div class="launcher-builder__actions">
+        <button
+          id="builderSaveButton"
+          class="button button--primary launcher-builder__save"
+          type="button"
+          disabled
+        >
+          Save time frame
+        </button>
+
+        <button
+          id="builderClearButton"
+          class="button"
+          type="button"
+        >
+          Clear selection
+        </button>
+      </div>
+
+      <p id="builderFeedback" class="launcher-feedback" aria-live="polite"></p>
+    </section>
+  `;
+}
+
+export function bindAnalysisBuilder() {
+  const yearGroup = document.getElementById("builderYearGroup");
+  const monthField = document.getElementById("builderMonthField");
+  const monthGroup = document.getElementById("builderMonthGroup");
+  const dateField = document.getElementById("builderDateField");
+  const dateGroup = document.getElementById("builderDateGroup");
+  const saveButton = document.getElementById("builderSaveButton");
+  const clearButton = document.getElementById("builderClearButton");
+  const summary = document.getElementById("builderSelectionSummary");
+  const feedback = document.getElementById("builderFeedback");
+
+  yearGroup?.addEventListener("click", (event) => {
+    const button = event.target.closest("[data-builder-year]");
+    if (!button) return;
+
+    const nextYear = button.dataset.builderYear || "";
+
+    builderState.year = builderState.year === nextYear ? "" : nextYear;
+    builderState.month = "";
+    builderState.dates = [];
+    builderState.savedConfig = null;
+
+    if (feedback) {
+      feedback.textContent = "";
+    }
+
+    syncBuilderUi();
+  });
+
+  monthGroup?.addEventListener("click", (event) => {
+    const button = event.target.closest("[data-builder-month]");
+    if (!button) return;
+
+    const nextMonth = button.dataset.builderMonth || "";
+
+    builderState.month = builderState.month === nextMonth ? "" : nextMonth;
+    builderState.dates = [];
+    builderState.savedConfig = null;
+
+    if (feedback) {
+      feedback.textContent = "";
+    }
+
+    syncBuilderUi();
+  });
+
+  dateGroup?.addEventListener("click", (event) => {
+    const button = event.target.closest("[data-builder-date]");
+    if (!button) return;
+
+    toggleDate(button.dataset.builderDate || "");
+    builderState.savedConfig = null;
+
+    if (feedback) {
+      feedback.textContent = "";
+    }
+
+    syncBuilderUi();
+  });
+
+  saveButton?.addEventListener("click", () => {
+    try {
+      const config = buildTimeFrameRenderConfig(builderState);
+      builderState.savedConfig = config;
+
+      if (feedback) {
+        feedback.textContent = `Time frame saved: ${config.meta.label}. Use View map to open this subset.`;
+      }
+
+      syncBuilderUi();
+    } catch (error) {
+      if (feedback) {
+        feedback.textContent = error.message;
+      }
+    }
+  });
+
+  clearButton?.addEventListener("click", () => {
+    builderState = createEmptyBuilderState();
+
+    if (feedback) {
+      feedback.textContent = "Time frame selection cleared. View map will open all activity.";
+    }
+
+    syncBuilderUi();
+  });
+
+  syncBuilderUi();
+
+  function syncBuilderUi() {
+    syncActiveButtons(yearGroup, "builderYear", [builderState.year]);
+
+    const availableMonths = builderState.year
+      ? builderDateIndex.monthsByYear.get(builderState.year) || []
+      : [];
+
+    if (monthField) {
+      monthField.hidden = !builderState.year || availableMonths.length === 0;
+    }
+
+    if (monthGroup) {
+      monthGroup.innerHTML = renderMonthButtons(builderState.year, availableMonths);
+      syncActiveButtons(monthGroup, "builderMonth", [builderState.month]);
+    }
+
+    const dateKey =
+      builderState.year && builderState.month
+        ? `${builderState.year}-${builderState.month}`
+        : "";
+
+    const availableDates = dateKey
+      ? builderDateIndex.datesByYearMonth.get(dateKey) || []
+      : [];
+
+    if (dateField) {
+      dateField.hidden = !builderState.year || !builderState.month || availableDates.length === 0;
+    }
+
+    if (dateGroup) {
+      dateGroup.innerHTML = renderDateButtons(dateKey, availableDates);
+      syncActiveButtons(dateGroup, "builderDate", builderState.dates);
+    }
+
+    if (saveButton) {
+      saveButton.disabled = !builderState.year || Boolean(builderState.savedConfig);
+      saveButton.textContent = builderState.savedConfig
+        ? "Time frame saved"
+        : "Save time frame";
+    }
+
+    if (summary) {
+      summary.innerHTML = buildSelectionSummaryHtml();
+    }
+  }
+}
+
+export function getSavedTimeFrameConfig() {
+  return builderState.savedConfig || null;
+}
+
+export function buildTimeFrameRenderConfig(state = builderState) {
+  const safeYear = String(state.year || "").trim();
+  const safeMonth = normalizeMonth(state.month);
+  const safeDates = Array.isArray(state.dates)
+    ? [...state.dates].filter(Boolean).sort()
+    : [];
+
+  if (!safeYear) {
+    throw new Error("Select a year before saving a time frame.");
+  }
+
+  const label = buildConfigLabel({
+    year: safeYear,
+    month: safeMonth,
+    dates: safeDates
+  });
+
+  const description = buildConfigDescription({
+    year: safeYear,
+    month: safeMonth,
+    dates: safeDates
+  });
+
+  return createRenderConfig({
+    meta: {
+      presetId: "TIME_FRAME_BUILDER",
+      selectionPath: "builder/time-frame",
+      label,
+      description
+    },
+    filters: {
+      year: safeYear,
+      month: safeMonth,
+      dates: safeDates
+    },
+    visualization: {
+      showMap: true,
+      showBoundaries: true,
+      showJobs: true,
+      showOrigins: true,
+      fitToVisible: false
+    },
+    analytics: {
+      mode: "time_frame",
+      groupBy: safeDates.length > 0 ? "date" : safeMonth ? "day" : "month",
+      sortBy: "date"
+    }
+  });
+}
+
+function createEmptyBuilderState() {
+  return {
+    year: "",
+    month: "",
+    dates: [],
+    savedConfig: null
+  };
+}
+
+function createEmptyDateIndex() {
+  return {
+    years: [],
+    monthsByYear: new Map(),
+    datesByYearMonth: new Map(),
+    counts: new Map()
+  };
+}
+
+function buildDateIndex(runtimeData) {
+  const rows = getRuntimeRows(runtimeData);
+  const years = new Set();
+  const monthsByYear = new Map();
+  const datesByYearMonth = new Map();
+  const counts = new Map();
+
+  rows.forEach((row) => {
+    const parts = getRowDateParts(row);
+    if (!parts) return;
+
+    years.add(parts.year);
+
+    if (!monthsByYear.has(parts.year)) {
+      monthsByYear.set(parts.year, new Set());
+    }
+
+    monthsByYear.get(parts.year).add(parts.month);
+
+    const yearMonthKey = `${parts.year}-${parts.month}`;
+
+    if (!datesByYearMonth.has(yearMonthKey)) {
+      datesByYearMonth.set(yearMonthKey, new Set());
+    }
+
+    datesByYearMonth.get(yearMonthKey).add(parts.isoDate);
+
+    incrementCount(counts, `year:${parts.year}`);
+    incrementCount(counts, `month:${yearMonthKey}`);
+    incrementCount(counts, `date:${parts.isoDate}`);
+  });
+
+  return {
+    years: [...years].sort((a, b) => Number(b) - Number(a)),
+    monthsByYear: mapSetValues(monthsByYear, (values) =>
+      [...values].sort((a, b) => Number(a) - Number(b))
+    ),
+    datesByYearMonth: mapSetValues(datesByYearMonth, (values) =>
+      [...values].sort()
+    ),
+    counts
+  };
+}
+
+function getRuntimeRows(runtimeData) {
+  if (!runtimeData || typeof runtimeData !== "object") {
+    return [];
+  }
+
+  if (Array.isArray(runtimeData.candidateRows)) {
+    return runtimeData.candidateRows;
+  }
+
+  if (Array.isArray(runtimeData.derivedRows)) {
+    return runtimeData.derivedRows;
+  }
+
+  if (Array.isArray(runtimeData.joinedRows)) {
+    return runtimeData.joinedRows;
+  }
+
+  if (Array.isArray(runtimeData.exportRows)) {
+    return runtimeData.exportRows;
+  }
+
+  if (Array.isArray(runtimeData.eventsRows)) {
+    return runtimeData.eventsRows;
+  }
+
+  return [];
+}
+
+function getRowDateParts(row) {
+  const date = getRowDate(row);
+
+  if (!(date instanceof Date) || Number.isNaN(date.getTime())) {
+    return null;
+  }
+
+  const year = String(date.getFullYear());
+  const month = normalizeMonth(date.getMonth() + 1);
+  const day = normalizeDay(date.getDate());
+  const isoDate = `${year}-${month}-${day}`;
+
+  return {
+    year,
+    month,
+    day,
+    isoDate
+  };
+}
+
+function getRowDate(row) {
+  if (row?._parsedDate instanceof Date && !Number.isNaN(row._parsedDate.getTime())) {
+    return row._parsedDate;
+  }
+
+  const raw =
+    row?._dateValue ||
+    row?.date ||
+    row?.start_date ||
+    row?.event_date ||
+    row?.start_time ||
+    row?.created_at ||
+    row?.updated_at ||
+    "";
+
+  if (!raw) {
+    return null;
+  }
+
+  const parsed = new Date(raw);
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
+}
+
+function renderYearButtons() {
+  if (builderDateIndex.years.length === 0) {
+    return `
+      <span class="launcher-builder__empty">
+        No dated records were found in the loaded runtime.
+      </span>
+    `;
+  }
+
+  return builderDateIndex.years
+    .map((year) =>
+      renderChipButton({
+        datasetKey: "builderYear",
+        value: year,
+        label: year,
+        count: getCount(`year:${year}`)
+      })
+    )
+    .join("");
+}
+
+function renderMonthButtons(year, months) {
+  if (!year || !Array.isArray(months) || months.length === 0) {
+    return "";
+  }
+
+  return months
+    .map((month) =>
+      renderChipButton({
+        datasetKey: "builderMonth",
+        value: month,
+        label: MONTH_LABELS[Number(month) - 1] || month,
+        count: getCount(`month:${year}-${month}`)
+      })
+    )
+    .join("");
+}
+
+function renderDateButtons(yearMonthKey, dates) {
+  if (!yearMonthKey || !Array.isArray(dates) || dates.length === 0) {
+    return "";
+  }
+
+  const weekGroups = groupDatesByWeek(dates);
+
+  return weekGroups
+    .map((group) => {
+      const chips = group.dates
+        .map((isoDate) => {
+          const date = new Date(`${isoDate}T00:00:00`);
+          const label = Number.isNaN(date.getTime())
+            ? isoDate
+            : new Intl.DateTimeFormat(undefined, {
+                weekday: "short",
+                month: "short",
+                day: "numeric"
+              }).format(date);
+
+          return renderChipButton({
+            datasetKey: "builderDate",
+            value: isoDate,
+            label,
+            count: getCount(`date:${isoDate}`)
+          });
+        })
+        .join("");
+
+      return `
+        <section class="launcher-date-week" aria-label="${escapeHtml(group.label)}">
+          <div class="launcher-date-week__heading">${escapeHtml(group.label)}</div>
+          <div class="launcher-date-week__chips">
+            ${chips}
+          </div>
+        </section>
+      `;
+    })
+    .join("");
+}
+
+function renderChipButton({ datasetKey, value, label, count }) {
+  return `
+    <button
+      class="launcher-chip launcher-chip--date-tree"
+      type="button"
+      data-${camelToKebab(datasetKey)}="${escapeHtml(value)}"
+      aria-pressed="false"
+    >
+      <span class="launcher-chip__label">${escapeHtml(label)}</span>
+      <span class="launcher-chip__count">${Number(count || 0).toLocaleString()}</span>
+    </button>
+  `;
+}
+
+function groupDatesByWeek(dates) {
+  const groups = new Map();
+
+  dates.forEach((isoDate) => {
+    const date = new Date(`${isoDate}T00:00:00`);
+    if (Number.isNaN(date.getTime())) return;
+
+    const weekStart = getWeekStartMonday(date);
+    const weekKey = toIsoDate(weekStart);
+    const label = `Week of ${new Intl.DateTimeFormat(undefined, {
+      month: "short",
+      day: "numeric"
+    }).format(weekStart)}`;
+
+    if (!groups.has(weekKey)) {
+      groups.set(weekKey, {
+        key: weekKey,
+        label,
+        dates: []
+      });
+    }
+
+    groups.get(weekKey).dates.push(isoDate);
+  });
+
+  return [...groups.values()].sort((a, b) => a.key.localeCompare(b.key));
+}
+
+function getWeekStartMonday(date) {
+  const copy = new Date(date);
+  copy.setHours(0, 0, 0, 0);
+
+  const day = copy.getDay();
+  const offset = day === 0 ? -6 : 1 - day;
+  copy.setDate(copy.getDate() + offset);
+
+  return copy;
+}
+
+function toIsoDate(date) {
+  const year = date.getFullYear();
+  const month = normalizeMonth(date.getMonth() + 1);
+  const day = normalizeDay(date.getDate());
+  return `${year}-${month}-${day}`;
+}
+
+function buildSelectionSummaryHtml() {
+  const parts = [];
+
+  if (builderState.year) {
+    parts.push(`<strong>${escapeHtml(builderState.year)}</strong>`);
+  }
+
+  if (builderState.month) {
+    const monthLabel = MONTH_LABELS[Number(builderState.month) - 1] || builderState.month;
+    parts.push(`<strong>${escapeHtml(monthLabel)}</strong>`);
+  }
+
+  if (builderState.dates.length > 0) {
+    parts.push(`<strong>${builderState.dates.length} selected date${builderState.dates.length === 1 ? "" : "s"}</strong>`);
+  }
+
+  if (parts.length === 0) {
+    return "No time frame selected yet.";
+  }
+
+  const count = getCurrentSelectionCount();
+  const savedNote = builderState.savedConfig
+    ? `<span class="launcher-builder__summary-saved">Saved for View map.</span>`
+    : `<span class="launcher-builder__summary-meta">Not saved yet.</span>`;
+
+  return `
+    <span>${parts.join(" / ")}</span>
+    <span class="launcher-builder__summary-meta">
+      ${count.toLocaleString()} matching record${count === 1 ? "" : "s"} before map-side refinements.
+    </span>
+    ${savedNote}
+  `;
+}
+
+function getCurrentSelectionCount() {
+  if (!builderState.year) {
+    return 0;
+  }
+
+  if (builderState.dates.length > 0) {
+    return builderState.dates.reduce(
+      (total, isoDate) => total + getCount(`date:${isoDate}`),
+      0
+    );
+  }
+
+  if (builderState.month) {
+    return getCount(`month:${builderState.year}-${builderState.month}`);
+  }
+
+  return getCount(`year:${builderState.year}`);
+}
+
+function buildConfigLabel({ year, month, dates }) {
+  if (dates.length > 0) {
+    return `${year} ${MONTH_LABELS[Number(month) - 1] || month}: ${dates.length} selected date${dates.length === 1 ? "" : "s"}`;
+  }
+
+  if (month) {
+    return `${MONTH_LABELS[Number(month) - 1] || month} ${year}`;
+  }
+
+  return `${year}`;
+}
+
+function buildConfigDescription({ year, month, dates }) {
+  if (dates.length > 0) {
+    return `Launcher-defined time frame for ${dates.length} selected date${dates.length === 1 ? "" : "s"} in ${MONTH_LABELS[Number(month) - 1] || month} ${year}.`;
+  }
+
+  if (month) {
+    return `Launcher-defined time frame for all available records in ${MONTH_LABELS[Number(month) - 1] || month} ${year}.`;
+  }
+
+  return `Launcher-defined time frame for all available records in ${year}.`;
+}
+
+function toggleDate(isoDate) {
+  if (!isoDate) return;
+
+  const index = builderState.dates.indexOf(isoDate);
+
+  if (index >= 0) {
+    builderState.dates.splice(index, 1);
+  } else {
+    builderState.dates.push(isoDate);
+  }
+
+  builderState.dates.sort();
+}
+
+function syncActiveButtons(container, datasetKey, selectedValues) {
+  if (!container) return;
+
+  const selected = new Set((selectedValues || []).filter(Boolean));
+  const selector = `[data-${camelToKebab(datasetKey)}]`;
+
+  container.querySelectorAll(selector).forEach((button) => {
+    const isActive = selected.has(button.dataset[datasetKey]);
+    button.classList.toggle("is-active", isActive);
+    button.setAttribute("aria-pressed", String(isActive));
+  });
+}
+
+function getCount(key) {
+  return builderDateIndex.counts.get(key) || 0;
+}
+
+function incrementCount(map, key) {
+  map.set(key, (map.get(key) || 0) + 1);
+}
+
+function mapSetValues(sourceMap, transform) {
+  const result = new Map();
+
+  sourceMap.forEach((value, key) => {
+    result.set(key, transform(value));
+  });
+
+  return result;
+}
+
+function normalizeMonth(value) {
+  const number = Number(value);
+  if (!Number.isFinite(number) || number < 1 || number > 12) {
+    return "";
+  }
+
+  return String(number).padStart(2, "0");
+}
+
+function normalizeDay(value) {
+  const number = Number(value);
+  if (!Number.isFinite(number) || number < 1 || number > 31) {
+    return "";
+  }
+
+  return String(number).padStart(2, "0");
+}
+
+function camelToKebab(value) {
+  return String(value).replace(/[A-Z]/g, (char) => `-${char.toLowerCase()}`);
+}
+
+function escapeHtml(value) {
+  return String(value ?? "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#39;");
+}
+
+These two handle the launcher flow and builder logic. The plan specifically called for these files plus styles/04-launcher.css; Iâ€™ll provide the CSS replacement next.
+
+---
+
+Okay, thank you. I've updated the first two files. I'm ready for the styles 04-launcher.css file update. Thank you.
+
+---
+
+Below is the full replacement for styles/04-launcher.css.
+
+.launcher-shell {
+  width: min(1180px, calc(100% - 28px));
+  margin: 0 auto;
+  padding: 28px 0 40px;
   display: grid;
-  grid-template-columns: minmax(220px, 1fr) minmax(360px, auto);
+  gap: 24px;
+}
+
+/* Runtime rail */
+
+.launcher-runtime-rail {
+  position: sticky;
+  top: 12px;
+  z-index: 20;
+  overflow: hidden;
+  border: 1px solid rgba(148, 163, 184, 0.35);
+  border-radius: 999px;
+  background: rgba(248, 250, 252, 0.94);
+  box-shadow: 0 14px 34px rgba(15, 23, 42, 0.1);
+  backdrop-filter: blur(14px);
+}
+
+.launcher-runtime-rail__track {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, #e2e8f0 0%, #f8fafc 100%);
+}
+
+.launcher-runtime-rail__fill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 0%;
+  border-radius: inherit;
+  background:
+    linear-gradient(90deg, rgba(29, 78, 216, 0.9), rgba(59, 130, 246, 0.92)),
+    linear-gradient(90deg, #dbeafe, #bfdbfe);
+  transition: width 420ms ease;
+}
+
+.launcher-runtime-rail__content {
+  position: relative;
+  z-index: 1;
+  min-height: 54px;
+  padding: 10px 18px;
+  display: flex;
   align-items: center;
-  gap: 14px;
-  min-height: var(--topbar-height);
-  padding: 12px 18px;
-  background: rgba(255, 255, 255, 0.94);
-  backdrop-filter: blur(8px);
-  border-bottom: 1px solid var(--color-border);
+  justify-content: space-between;
+  gap: 16px;
 }
 
-.topbar__title-wrap {
-  min-width: 0;
+.launcher-runtime-rail__status {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 190px;
+  font-size: 0.9rem;
+  font-weight: 850;
+  color: #0f172a;
 }
 
-.topbar__eyebrow {
-  margin: 0 0 5px;
-  font-size: 0.74rem;
-  font-weight: 800;
+.launcher-runtime-rail__dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+  background: #94a3b8;
+  box-shadow: 0 0 0 5px rgba(148, 163, 184, 0.16);
+}
+
+.launcher-runtime-rail__meta {
+  overflow: hidden;
+  text-align: right;
+  color: #475569;
+  font-size: 0.84rem;
+  font-weight: 700;
+  line-height: 1.3;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.launcher-runtime-rail.is-ready {
+  border-color: rgba(29, 78, 216, 0.25);
+}
+
+.launcher-runtime-rail.is-ready .launcher-runtime-rail__dot {
+  background: var(--color-primary);
+  box-shadow: 0 0 0 5px rgba(29, 78, 216, 0.14);
+}
+
+.launcher-runtime-rail.is-ready .launcher-runtime-rail__status {
+  color: var(--color-primary-strong);
+}
+
+.launcher-runtime-rail.is-error {
+  border-color: rgba(185, 28, 28, 0.32);
+}
+
+.launcher-runtime-rail.is-error .launcher-runtime-rail__fill {
+  background: linear-gradient(90deg, #991b1b, #dc2626);
+}
+
+.launcher-runtime-rail.is-error .launcher-runtime-rail__dot {
+  background: var(--color-danger);
+  box-shadow: 0 0 0 5px rgba(185, 28, 28, 0.14);
+}
+
+/* Hero */
+
+.launcher-hero {
+  padding: 28px;
+  border: 1px solid rgba(29, 78, 216, 0.12);
+  border-radius: var(--radius-xl);
+  background:
+    radial-gradient(circle at top right, rgba(59, 130, 246, 0.12), transparent 34%),
+    linear-gradient(180deg, #ffffff 0%, #f8fbff 100%);
+  box-shadow: var(--shadow-soft);
+}
+
+.launcher-hero__kicker {
+  margin: 0 0 8px;
+  font-size: 0.82rem;
+  font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--color-primary);
 }
 
-.topbar__title {
+.launcher-hero__title {
   margin: 0;
-  font-size: clamp(1rem, 2vw, 1.2rem);
-  line-height: 1.08;
+  font-size: clamp(1.8rem, 3vw, 2.5rem);
+  line-height: 1.05;
 }
 
-.topbar__subtitle {
-  margin: 4px 0 0;
-  max-width: 520px;
-  font-size: 0.88rem;
-  line-height: 1.3;
+.launcher-hero__subtitle {
+  max-width: 780px;
+  margin: 12px 0 0;
+  font-size: 1rem;
+  line-height: 1.55;
   color: var(--color-muted);
 }
 
-.topbar__mobile-row {
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 12px;
-  min-width: 0;
-}
+/* Cards */
 
-.topbar__status {
-  flex: 0 1 340px;
-  display: grid;
-  gap: 2px;
-  min-width: 178px;
-  max-width: 390px;
-  padding: 8px 12px;
-  border: 1px solid rgba(217, 119, 6, 0.24);
-  border-radius: 999px;
-  background: linear-gradient(180deg, #fffbeb 0%, #ffffff 100%);
-  box-shadow: 0 6px 18px rgba(15, 23, 42, 0.06);
-}
-
-.topbar__status.is-empty {
-  border-color: var(--color-border);
-  background: linear-gradient(180deg, #f8fafc 0%, #ffffff 100%);
-}
-
-.topbar__status-count {
-  overflow: hidden;
-  font-size: 0.88rem;
-  font-weight: 850;
-  line-height: 1.12;
-  color: #92400e;
-  white-space: nowrap;
-  text-overflow: ellipsis;
-}
-
-.topbar__status.is-empty .topbar__status-count {
-  color: var(--color-muted);
-}
-
-.topbar__status-meta {
-  overflow: hidden;
-  color: var(--color-muted);
-  font-size: 0.74rem;
-  font-weight: 650;
-  line-height: 1.15;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.topbar__actions {
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  min-width: max-content;
-}
-
-.topbar__back-button {
-  min-height: 40px;
-  padding-inline: 14px;
-  white-space: nowrap;
-}
-
-.layout {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) var(--panel-width);
-  grid-template-areas: "map panel";
-  align-items: stretch;
-  min-height: calc(100vh - var(--topbar-height));
-}
-
-.map-column {
-  grid-area: map;
-  display: grid;
-  grid-template-rows: minmax(0, 1fr) auto;
-  min-width: 0;
-  min-height: calc(100vh - var(--topbar-height));
-}
-
-.map-section {
-  position: relative;
-  min-height: 0;
-  background: #dbe7f3;
-}
-
-#map {
-  width: 100%;
-  height: 100%;
-  min-height: calc(100vh - var(--topbar-height) - 40px);
-  background: #dbe7f3;
-}
-
-.panel {
-  grid-area: panel;
-  display: grid;
-  align-content: start;
-  gap: 12px;
-  max-height: calc(100vh - var(--topbar-height));
-  padding: 12px;
-  overflow: auto;
-  border-left: 1px solid var(--color-border);
-  background: rgba(248, 250, 252, 0.74);
-}
-
-@media (max-width: 980px) {
-  .layout {
-    grid-template-columns: 1fr;
-    grid-template-areas:
-      "panel"
-      "map";
-    min-height: auto;
-  }
-
-  .panel {
-    max-height: none;
-    overflow: visible;
-    border-left: 0;
-    border-bottom: 1px solid var(--color-border);
-  }
-
-  .map-column {
-    min-height: auto;
-  }
-
-  #map {
-    height: 58vh;
-    min-height: 420px;
-  }
-}
-
-@media (max-width: 640px) {
-  .topbar {
-    grid-template-columns: 1fr;
-    gap: 10px;
-    min-height: 0;
-    padding: 10px 12px;
-  }
-
-  .topbar__eyebrow {
-    margin-bottom: 3px;
-    font-size: 0.72rem;
-  }
-
-  .topbar__title {
-    font-size: 1.04rem;
-  }
-
-  .topbar__subtitle {
-    display: none;
-  }
-
-  .topbar__mobile-row {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) auto;
-    align-items: stretch;
-    gap: 8px;
-  }
-
-  .topbar__status {
-    min-width: 0;
-    max-width: none;
-    padding: 8px 10px;
-    border-radius: var(--radius-md);
-  }
-
-  .topbar__status-count {
-    font-size: 0.82rem;
-  }
-
-  .topbar__status-meta {
-    font-size: 0.7rem;
-  }
-
-  .topbar__back-button {
-    min-height: 100%;
-    padding: 8px 11px;
-    border-radius: var(--radius-md);
-    font-size: 0.82rem;
-    font-weight: 800;
-  }
-
-  .panel {
-    gap: 8px;
-    padding: 10px;
-  }
-
-  #map {
-    height: 62vh;
-    min-height: 430px;
-  }
-}
-styles/06-workspace-panels.css
-.panel-card {
-  padding: 16px;
-  background: var(--color-surface);
+.launcher-entry-card,
+.launcher-group,
+.launcher-builder {
+  padding: 22px;
   border: 1px solid var(--color-border);
-  border-radius: var(--radius-lg);
+  border-radius: var(--radius-xl);
+  background: var(--color-surface);
   box-shadow: var(--shadow-card);
 }
 
-.panel-card__title {
-  margin: 0 0 12px;
-  font-size: 1rem;
+.launcher-entry-card {
+  display: grid;
+  gap: 18px;
+  background:
+    radial-gradient(circle at top right, rgba(29, 78, 216, 0.1), transparent 34%),
+    var(--color-surface);
+}
+
+.launcher-view-map-button {
+  width: fit-content;
+  min-width: 180px;
+  justify-self: start;
+  font-weight: 800;
+}
+
+.launcher-section-heading__eyebrow {
+  margin: 0 0 8px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-primary);
+}
+
+.launcher-section-heading__title {
+  margin: 0;
+  font-size: 1.2rem;
   line-height: 1.2;
 }
 
-.panel-text {
-  margin: 0 0 10px;
-  font-size: 0.93rem;
+.launcher-section-heading__description {
+  margin: 8px 0 0;
+  font-size: 0.95rem;
+  line-height: 1.5;
+  color: var(--color-muted);
+}
+
+.launcher-feedback {
+  margin: 0;
+  font-size: 0.92rem;
   line-height: 1.45;
   color: var(--color-muted);
 }
 
-.panel-text:last-child {
-  margin-bottom: 0;
+/* Legacy launcher cards retained for compatibility */
+
+.launcher-groups {
+  display: grid;
+  gap: 22px;
 }
 
-.panel-text--compact {
-  margin-top: 12px;
-  margin-bottom: 0;
+.launcher-card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 14px;
+  margin-top: 18px;
+}
+
+.launcher-card {
+  width: 100%;
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 14px;
+  min-height: 176px;
+  padding: 18px;
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--color-border);
+  background: linear-gradient(180deg, #ffffff 0%, #f9fbfd 100%);
+  box-shadow: 0 4px 14px rgba(15, 23, 42, 0.04);
+  transition:
+    transform var(--transition-fast),
+    border-color var(--transition-fast),
+    box-shadow var(--transition-fast),
+    background-color var(--transition-fast);
+}
+
+.launcher-card--button {
+  cursor: pointer;
+}
+
+.launcher-card--button:hover:not(:disabled) {
+  transform: translateY(-2px);
+  border-color: rgba(29, 78, 216, 0.25);
+  box-shadow: 0 14px 30px rgba(15, 23, 42, 0.08);
+}
+
+.launcher-card--button:disabled {
+  cursor: not-allowed;
+  opacity: 0.68;
+}
+
+.launcher-card__body {
+  display: grid;
+  gap: 10px;
+}
+
+.launcher-card__title {
+  font-size: 1rem;
+  font-weight: 700;
+  line-height: 1.3;
+}
+
+.launcher-card__description {
+  font-size: 0.92rem;
+  line-height: 1.5;
+  color: var(--color-muted);
+}
+
+.launcher-card__footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.launcher-card__meta {
+  display: inline-flex;
+  align-items: center;
+  min-height: 30px;
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: var(--color-primary-soft);
+  color: var(--color-primary-strong);
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+/* Builder */
+
+.launcher-builder {
+  display: grid;
+  gap: 18px;
+  background:
+    radial-gradient(circle at top left, rgba(29, 78, 216, 0.08), transparent 30%),
+    linear-gradient(180deg, #ffffff 0%, #fbfdff 100%);
+}
+
+.launcher-builder__tree {
+  display: grid;
+  gap: 18px;
+  margin-top: 2px;
+}
+
+.launcher-builder__summary {
+  display: grid;
+  gap: 4px;
+  padding: 13px 14px;
+  border: 1px solid rgba(29, 78, 216, 0.14);
+  border-radius: var(--radius-md);
+  background: linear-gradient(180deg, #eff6ff 0%, #ffffff 100%);
+  color: var(--color-text);
+  font-size: 0.92rem;
+  line-height: 1.4;
+}
+
+.launcher-builder__summary-meta {
+  color: var(--color-muted);
+  font-size: 0.84rem;
+  font-weight: 600;
+}
+
+.launcher-builder__summary-saved {
+  width: fit-content;
+  display: inline-flex;
+  align-items: center;
+  min-height: 26px;
+  padding: 5px 9px;
+  border-radius: 999px;
+  background: rgba(15, 118, 110, 0.1);
+  color: var(--color-success);
+  font-size: 0.8rem;
+  font-weight: 850;
+  line-height: 1.1;
+}
+
+.launcher-builder__empty {
+  display: inline-flex;
+  align-items: center;
+  min-height: 38px;
+  padding: 8px 12px;
+  border: 1px dashed var(--color-border-strong);
+  border-radius: 999px;
+  color: var(--color-muted);
+  background: var(--color-surface-muted);
   font-size: 0.88rem;
+  line-height: 1.35;
 }
 
-.toggle-group {
+.launcher-builder__save {
+  min-width: 220px;
+  font-weight: 800;
+}
+
+.launcher-builder__grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+  margin-top: 18px;
+}
+
+.launcher-builder__actions {
   display: flex;
   flex-wrap: wrap;
-  align-items: center;
+  gap: 10px;
+  margin-top: 0;
+}
+
+/* Fields */
+
+.launcher-field {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+}
+
+.launcher-label {
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: var(--color-muted);
+}
+
+.launcher-input {
+  min-height: 44px;
+  padding: 10px 12px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: #fff;
+  color: var(--color-text);
+  transition:
+    border-color var(--transition-fast),
+    box-shadow var(--transition-fast),
+    background-color var(--transition-fast);
+}
+
+.launcher-input::placeholder {
+  color: #8a97a6;
+}
+
+.launcher-input:hover {
+  border-color: var(--color-border-strong);
+}
+
+.launcher-input:focus {
+  outline: none;
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px rgba(29, 78, 216, 0.12);
+}
+
+/* Chips */
+
+.launcher-chip-group {
+  display: flex;
+  flex-wrap: wrap;
   gap: 8px;
 }
 
-.toggle-chip {
+.launcher-chip-group--tree {
+  align-items: stretch;
+}
+
+.launcher-chip-group--dates {
+  display: grid;
+  gap: 12px;
+  max-height: 300px;
+  overflow: auto;
+  padding: 2px 4px 4px 2px;
+}
+
+.launcher-chip {
   min-height: 38px;
   padding: 8px 12px;
   border: 1px solid var(--color-border);
@@ -2153,227 +3235,109 @@ styles/06-workspace-panels.css
   background: #fff;
   color: var(--color-text);
   cursor: pointer;
-  font-size: 0.88rem;
-  font-weight: 700;
-  line-height: 1.1;
   transition:
     border-color var(--transition-fast),
     background-color var(--transition-fast),
     color var(--transition-fast),
     box-shadow var(--transition-fast),
-    opacity var(--transition-fast),
     transform var(--transition-fast);
 }
 
-.toggle-chip:hover {
+.launcher-chip:hover {
   border-color: var(--color-border-strong);
   transform: translateY(-1px);
 }
 
-.toggle-chip:focus {
-  outline: none;
-  border-color: var(--color-primary);
-  box-shadow: 0 0 0 3px rgba(29, 78, 216, 0.12);
-}
-
-.toggle-chip.is-active {
+.launcher-chip.is-active {
   border-color: var(--color-primary);
   background: var(--color-primary-soft);
   color: var(--color-primary-strong);
   box-shadow: 0 0 0 3px rgba(29, 78, 216, 0.08);
 }
 
-.toggle-chip--day {
-  border-color: color-mix(in srgb, var(--day-color) 35%, #cbd5e1);
-}
-
-.toggle-chip--day.is-active {
-  border-color: var(--day-color);
-  background: color-mix(in srgb, var(--day-color) 14%, white);
-  color: var(--day-color);
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--day-color) 14%, white);
-}
-
-.toggle-chip--origin {
-  border-color: color-mix(in srgb, var(--origin-color, #94a3b8) 35%, #cbd5e1);
-}
-
-.toggle-chip--origin:hover {
-  border-color: var(--origin-color, #64748b);
-}
-
-.toggle-chip--origin.is-active {
-  border-color: var(--origin-color, #475569);
-  background: color-mix(in srgb, var(--origin-color, #94a3b8) 14%, white);
-  color: var(--origin-color, #475569);
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--origin-color, #94a3b8) 14%, white);
-}
-
-.toggle-chip--appointment {
-  border-color: color-mix(in srgb, var(--appointment-color, #64748b) 35%, #cbd5e1);
-}
-
-.toggle-chip--appointment:hover {
-  border-color: var(--appointment-color, #475569);
-}
-
-.toggle-chip--appointment.is-active {
-  border-color: var(--appointment-color, #475569);
-  background: color-mix(in srgb, var(--appointment-color, #64748b) 13%, white);
-  color: var(--appointment-color, #475569);
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--appointment-color, #64748b) 13%, white);
-}
-
-@media (max-width: 980px) {
-  .panel {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  .panel-card {
-    padding: 14px;
-  }
-
-  .panel-card:last-child:nth-child(odd) {
-    grid-column: 1 / -1;
-  }
-}
-
-@media (max-width: 640px) {
-  .panel {
-    grid-template-columns: 1fr;
-  }
-
-  .panel-card {
-    padding: 12px;
-    border-radius: var(--radius-md);
-  }
-
-  .panel-card__title {
-    margin-bottom: 9px;
-    font-size: 0.92rem;
-  }
-
-  .form-grid {
-    gap: 9px;
-  }
-
-  .form-field {
-    gap: 5px;
-  }
-
-  .form-label {
-    font-size: 0.76rem;
-  }
-
-  .toggle-group {
-    gap: 6px;
-  }
-
-  .toggle-chip {
-    min-height: 34px;
-    padding: 7px 10px;
-    font-size: 0.78rem;
-  }
-
-  .stats-row {
-    gap: 8px;
-    padding-bottom: 6px;
-  }
-
-  .stats-row dt,
-  .stats-row dd {
-    font-size: 0.82rem;
-  }
-
-  .button-row {
-    margin-top: 10px;
-  }
-
-  .button-row .button {
-    min-height: 36px;
-    padding: 8px 11px;
-    font-size: 0.82rem;
-  }
-}
-styles/08-debug.css
-.debug-strip {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
+.launcher-chip--date-tree {
+  display: inline-flex;
   align-items: center;
-  gap: 10px;
-  min-height: 40px;
-  padding: 7px 10px;
-  border-top: 1px solid var(--color-border);
-  background: rgba(255, 255, 255, 0.96);
+  gap: 8px;
+  min-height: 42px;
+  font-weight: 700;
 }
 
-.debug-strip__title {
-  margin: 0;
+.launcher-chip__label {
+  line-height: 1.1;
+}
+
+.launcher-chip__count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 26px;
+  min-height: 22px;
+  padding: 3px 7px;
+  border-radius: 999px;
+  background: #f1f5f9;
   color: var(--color-muted);
   font-size: 0.74rem;
   font-weight: 800;
   line-height: 1;
-  letter-spacing: 0.08em;
+}
+
+.launcher-chip.is-active .launcher-chip__count {
+  background: #ffffff;
+  color: var(--color-primary-strong);
+}
+
+/* Date week groups */
+
+.launcher-date-week {
+  display: grid;
+  gap: 8px;
+  padding: 10px;
+  border: 1px solid #eef2f7;
+  border-radius: var(--radius-md);
+  background: rgba(248, 250, 252, 0.72);
+}
+
+.launcher-date-week__heading {
+  font-size: 0.78rem;
+  font-weight: 850;
+  color: var(--color-muted);
   text-transform: uppercase;
+  letter-spacing: 0.04em;
 }
 
-.debug-output {
-  margin: 0;
-  width: 100%;
-  min-height: 24px;
-  max-height: 34px;
-  overflow: auto hidden;
-  padding: 5px 0;
-  background: transparent;
-  color: #111827;
-  font-size: 0.74rem;
-  line-height: 1.35;
-  white-space: nowrap;
-  word-break: normal;
+.launcher-date-week__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
 }
 
-@media (max-width: 640px) {
-  .debug-strip {
-    grid-template-columns: 1fr;
-    gap: 5px;
-    min-height: 0;
-    padding: 9px 10px 12px;
-    border-top: 1px solid var(--color-border);
-    background: #ffffff;
-  }
+/* Responsive */
 
-  .debug-strip__title {
-    font-size: 0.7rem;
-  }
-
-  .debug-output {
-    max-height: 74px;
-    overflow: auto;
-    padding: 6px 0 0;
-    font-size: 0.7rem;
-    line-height: 1.4;
-    white-space: pre-wrap;
-  }
-}
-styles/09-responsive.css
-@media (max-width: 820px) {
-  .launcher-builder__grid,
-  .launcher-status-grid {
-    grid-template-columns: 1fr;
-  }
-}
-
-@media (max-width: 640px) {
-  html,
-  body {
-    overflow-x: hidden;
-  }
-
+@media (max-width: 720px) {
   .launcher-shell {
-    width: min(100% - 20px, 100%);
-    padding-top: 18px;
-    padding-bottom: 24px;
+    width: min(100% - 20px, 1180px);
+    padding: 18px 0 30px;
     gap: 18px;
+  }
+
+  .launcher-runtime-rail {
+    top: 8px;
+    border-radius: var(--radius-lg);
+  }
+
+  .launcher-runtime-rail__content {
+    min-height: 70px;
+    align-items: flex-start;
+    flex-direction: column;
+    justify-content: center;
+    gap: 6px;
+  }
+
+  .launcher-runtime-rail__meta {
+    width: 100%;
+    text-align: left;
+    white-space: normal;
   }
 
   .launcher-hero,
@@ -2384,58 +3348,73 @@ styles/09-responsive.css
     border-radius: var(--radius-lg);
   }
 
-  .launcher-hero__title {
-    font-size: 1.8rem;
+  .launcher-hero {
+    padding-block: 20px;
   }
 
-  .launcher-hero__subtitle,
-  .launcher-section-heading__description {
-    font-size: 0.92rem;
-  }
-
-  .launcher-card-grid {
+  .launcher-builder__grid {
     grid-template-columns: 1fr;
   }
 
-  .launcher-card {
-    min-height: 0;
-  }
-
   .launcher-view-map-button,
-  .launcher-builder__save {
+  .launcher-builder__save,
+  .launcher-builder__actions .button {
     width: 100%;
   }
 
+  .launcher-builder__actions {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
   .launcher-chip-group--dates {
-    max-height: 260px;
+    max-height: 340px;
   }
 
-  .leaflet-control-zoom a {
-    width: 38px;
-    height: 38px;
-    line-height: 38px;
+  .launcher-date-week {
+    padding: 9px;
   }
 
-  .leaflet-popup-content {
-    min-width: 210px;
-    max-width: 260px;
+  .launcher-date-week__chips {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 7px;
   }
 
-  .popup-title {
-    font-size: 0.94rem;
-  }
-
-  .popup-meta {
-    font-size: 0.82rem;
-  }
-
-  .origin-label {
-    padding: 3px 7px;
-    font-size: 0.7rem;
+  .launcher-date-week__chips .launcher-chip {
+    width: 100%;
+    justify-content: space-between;
+    padding-inline: 10px;
   }
 }
 
-After replacement, hard-refresh mobile browser cache and test from launcher â†’ View map. The only expected functional change is visual/order refinement.
+@media (max-width: 420px) {
+  .launcher-runtime-rail__status {
+    min-width: 0;
+  }
+
+  .launcher-hero__title {
+    font-size: 1.65rem;
+  }
+
+  .launcher-section-heading__title {
+    font-size: 1.08rem;
+  }
+
+  .launcher-section-heading__description {
+    font-size: 0.9rem;
+  }
+
+  .launcher-chip-group--dates {
+    max-height: 360px;
+  }
+
+  .launcher-date-week__chips {
+    grid-template-columns: 1fr;
+  }
+}
+
+This completes the launcher batch: the first two JS files handle the behavior, and this CSS update handles the revised launcher layout plus week-grouped date selection styling.
 
 ===== engine\buildClientViewConfig.js =====
 
@@ -2914,7 +3893,7 @@ export function renderAnalysisBuilder(runtimeData = null) {
         </h2>
         <p class="launcher-section-heading__description">
           Select one year, optionally narrow to one month, then optionally choose
-          one or more dates. Leave month or date blank to keep the selection broader.
+          one or more dates. Save the time frame here, then use View map above.
         </p>
       </div>
 
@@ -2944,7 +3923,7 @@ export function renderAnalysisBuilder(runtimeData = null) {
           <div
             id="builderDateGroup"
             class="launcher-chip-group launcher-chip-group--dates"
-            aria-label="Available dates"
+            aria-label="Available dates grouped by week"
           ></div>
         </div>
       </div>
@@ -2959,12 +3938,12 @@ export function renderAnalysisBuilder(runtimeData = null) {
 
       <div class="launcher-builder__actions">
         <button
-          id="builderLaunchButton"
+          id="builderSaveButton"
           class="button button--primary launcher-builder__save"
           type="button"
           disabled
         >
-          Save time frame and view map
+          Save time frame
         </button>
 
         <button
@@ -2981,13 +3960,13 @@ export function renderAnalysisBuilder(runtimeData = null) {
   `;
 }
 
-export function bindAnalysisBuilder({ onLaunch } = {}) {
+export function bindAnalysisBuilder() {
   const yearGroup = document.getElementById("builderYearGroup");
   const monthField = document.getElementById("builderMonthField");
   const monthGroup = document.getElementById("builderMonthGroup");
   const dateField = document.getElementById("builderDateField");
   const dateGroup = document.getElementById("builderDateGroup");
-  const launchButton = document.getElementById("builderLaunchButton");
+  const saveButton = document.getElementById("builderSaveButton");
   const clearButton = document.getElementById("builderClearButton");
   const summary = document.getElementById("builderSelectionSummary");
   const feedback = document.getElementById("builderFeedback");
@@ -3003,6 +3982,10 @@ export function bindAnalysisBuilder({ onLaunch } = {}) {
     builderState.dates = [];
     builderState.savedConfig = null;
 
+    if (feedback) {
+      feedback.textContent = "";
+    }
+
     syncBuilderUi();
   });
 
@@ -3016,6 +3999,10 @@ export function bindAnalysisBuilder({ onLaunch } = {}) {
     builderState.dates = [];
     builderState.savedConfig = null;
 
+    if (feedback) {
+      feedback.textContent = "";
+    }
+
     syncBuilderUi();
   });
 
@@ -3026,23 +4013,23 @@ export function bindAnalysisBuilder({ onLaunch } = {}) {
     toggleDate(button.dataset.builderDate || "");
     builderState.savedConfig = null;
 
+    if (feedback) {
+      feedback.textContent = "";
+    }
+
     syncBuilderUi();
   });
 
-  launchButton?.addEventListener("click", () => {
+  saveButton?.addEventListener("click", () => {
     try {
       const config = buildTimeFrameRenderConfig(builderState);
       builderState.savedConfig = config;
 
       if (feedback) {
-        feedback.textContent = `Saved: ${config.meta.label}`;
+        feedback.textContent = `Time frame saved: ${config.meta.label}. Use View map to open this subset.`;
       }
 
       syncBuilderUi();
-
-      if (typeof onLaunch === "function") {
-        onLaunch(config);
-      }
     } catch (error) {
       if (feedback) {
         feedback.textContent = error.message;
@@ -3054,7 +4041,7 @@ export function bindAnalysisBuilder({ onLaunch } = {}) {
     builderState = createEmptyBuilderState();
 
     if (feedback) {
-      feedback.textContent = "Time frame selection cleared.";
+      feedback.textContent = "Time frame selection cleared. View map will open all activity.";
     }
 
     syncBuilderUi();
@@ -3096,14 +4083,21 @@ export function bindAnalysisBuilder({ onLaunch } = {}) {
       syncActiveButtons(dateGroup, "builderDate", builderState.dates);
     }
 
-    if (launchButton) {
-      launchButton.disabled = !builderState.year;
+    if (saveButton) {
+      saveButton.disabled = !builderState.year || Boolean(builderState.savedConfig);
+      saveButton.textContent = builderState.savedConfig
+        ? "Time frame saved"
+        : "Save time frame";
     }
 
     if (summary) {
       summary.innerHTML = buildSelectionSummaryHtml();
     }
   }
+}
+
+export function getSavedTimeFrameConfig() {
+  return builderState.savedConfig || null;
 }
 
 export function buildTimeFrameRenderConfig(state = builderState) {
@@ -3146,7 +4140,7 @@ export function buildTimeFrameRenderConfig(state = builderState) {
       showBoundaries: true,
       showJobs: true,
       showOrigins: true,
-      fitToVisible: true
+      fitToVisible: false
     },
     analytics: {
       mode: "time_frame",
@@ -3332,23 +4326,38 @@ function renderDateButtons(yearMonthKey, dates) {
     return "";
   }
 
-  return dates
-    .map((isoDate) => {
-      const date = new Date(`${isoDate}T00:00:00`);
-      const label = Number.isNaN(date.getTime())
-        ? isoDate
-        : new Intl.DateTimeFormat(undefined, {
-            weekday: "short",
-            month: "short",
-            day: "numeric"
-          }).format(date);
+  const weekGroups = groupDatesByWeek(dates);
 
-      return renderChipButton({
-        datasetKey: "builderDate",
-        value: isoDate,
-        label,
-        count: getCount(`date:${isoDate}`)
-      });
+  return weekGroups
+    .map((group) => {
+      const chips = group.dates
+        .map((isoDate) => {
+          const date = new Date(`${isoDate}T00:00:00`);
+          const label = Number.isNaN(date.getTime())
+            ? isoDate
+            : new Intl.DateTimeFormat(undefined, {
+                weekday: "short",
+                month: "short",
+                day: "numeric"
+              }).format(date);
+
+          return renderChipButton({
+            datasetKey: "builderDate",
+            value: isoDate,
+            label,
+            count: getCount(`date:${isoDate}`)
+          });
+        })
+        .join("");
+
+      return `
+        <section class="launcher-date-week" aria-label="${escapeHtml(group.label)}">
+          <div class="launcher-date-week__heading">${escapeHtml(group.label)}</div>
+          <div class="launcher-date-week__chips">
+            ${chips}
+          </div>
+        </section>
+      `;
     })
     .join("");
 }
@@ -3365,6 +4374,52 @@ function renderChipButton({ datasetKey, value, label, count }) {
       <span class="launcher-chip__count">${Number(count || 0).toLocaleString()}</span>
     </button>
   `;
+}
+
+function groupDatesByWeek(dates) {
+  const groups = new Map();
+
+  dates.forEach((isoDate) => {
+    const date = new Date(`${isoDate}T00:00:00`);
+    if (Number.isNaN(date.getTime())) return;
+
+    const weekStart = getWeekStartMonday(date);
+    const weekKey = toIsoDate(weekStart);
+    const label = `Week of ${new Intl.DateTimeFormat(undefined, {
+      month: "short",
+      day: "numeric"
+    }).format(weekStart)}`;
+
+    if (!groups.has(weekKey)) {
+      groups.set(weekKey, {
+        key: weekKey,
+        label,
+        dates: []
+      });
+    }
+
+    groups.get(weekKey).dates.push(isoDate);
+  });
+
+  return [...groups.values()].sort((a, b) => a.key.localeCompare(b.key));
+}
+
+function getWeekStartMonday(date) {
+  const copy = new Date(date);
+  copy.setHours(0, 0, 0, 0);
+
+  const day = copy.getDay();
+  const offset = day === 0 ? -6 : 1 - day;
+  copy.setDate(copy.getDate() + offset);
+
+  return copy;
+}
+
+function toIsoDate(date) {
+  const year = date.getFullYear();
+  const month = normalizeMonth(date.getMonth() + 1);
+  const day = normalizeDay(date.getDate());
+  return `${year}-${month}-${day}`;
 }
 
 function buildSelectionSummaryHtml() {
@@ -3388,12 +4443,16 @@ function buildSelectionSummaryHtml() {
   }
 
   const count = getCurrentSelectionCount();
+  const savedNote = builderState.savedConfig
+    ? `<span class="launcher-builder__summary-saved">Saved for View map.</span>`
+    : `<span class="launcher-builder__summary-meta">Not saved yet.</span>`;
 
   return `
     <span>${parts.join(" / ")}</span>
     <span class="launcher-builder__summary-meta">
       ${count.toLocaleString()} matching record${count === 1 ? "" : "s"} before map-side refinements.
     </span>
+    ${savedNote}
   `;
 }
 
@@ -3604,7 +4663,11 @@ export { renderLauncherShell as renderLanding } from "./launcherShell.js";
 // ui/launcherShell.js
 
 import { buildAllActivityPreset } from "../config/presets.js";
-import { bindAnalysisBuilder, renderAnalysisBuilder } from "./analysisBuilder.js";
+import {
+  bindAnalysisBuilder,
+  getSavedTimeFrameConfig,
+  renderAnalysisBuilder
+} from "./analysisBuilder.js";
 import { clearConfig, setConfig } from "../state/session.js";
 
 export async function renderLauncherShell(rootId = "landing-root", options = {}) {
@@ -3625,11 +4688,7 @@ export async function renderLauncherShell(rootId = "landing-root", options = {})
 
   setViewMapDisabled(!runtimeData);
 
-  bindAnalysisBuilder({
-    onLaunch(config) {
-      launchWithConfig(config, { onOpenWorkspace });
-    }
-  });
+  bindAnalysisBuilder();
 }
 
 function buildLauncherMarkup(runtimeData = null, runtimeProgress = null) {
@@ -3667,21 +4726,18 @@ function buildLauncherMarkup(runtimeData = null, runtimeProgress = null) {
 
       <header class="launcher-hero">
         <p class="launcher-hero__kicker">RWK</p>
-        <h1 class="launcher-hero__title">Operational launcher</h1>
-        <p class="launcher-hero__subtitle">
-          Enter the workspace with the full map population, or build a time frame first
-          and open the map with that subset already isolated.
-        </p>
+        <h1 class="launcher-hero__title">Client map</h1>
       </header>
 
       <section class="launcher-entry-card" aria-labelledby="viewMapTitle">
         <div class="launcher-section-heading">
           <p class="launcher-section-heading__eyebrow">Map</p>
           <h2 id="viewMapTitle" class="launcher-section-heading__title">
-            View operational map
+            View map
           </h2>
           <p class="launcher-section-heading__description">
-            Open the full current workspace after the shared runtime is ready.
+            Open the full current map, or save a time frame below first to open
+            the map with that subset already applied.
           </p>
         </div>
 
@@ -3704,7 +4760,8 @@ function bindStaticLauncherEvents(root, options = {}) {
   const viewMapButton = root.querySelector("#viewMapButton");
 
   viewMapButton?.addEventListener("click", () => {
-    launchWithConfig(buildAllActivityPreset(), options);
+    const savedTimeFrameConfig = getSavedTimeFrameConfig();
+    launchWithConfig(savedTimeFrameConfig || buildAllActivityPreset(), options);
   });
 }
 
@@ -3730,7 +4787,7 @@ function setViewMapDisabled(disabled) {
     button.disabled = disabled;
   }
 
-  const builderButton = document.getElementById("builderLaunchButton");
+  const builderButton = document.getElementById("builderSaveButton");
   if (builderButton && disabled) {
     builderButton.disabled = true;
   }
@@ -4031,7 +5088,10 @@ import {
   initWorkspaceMap,
   ensureWorkspaceLayers,
   clearWorkspaceLayers,
-  fitWorkspaceToData
+  createBoundsFromGeoJson,
+  createBoundsFromGeoJsonFeatures,
+  createBoundsFromRows,
+  fitWorkspaceToBounds
 } from "./mapCore.js";
 import { computeWorkspaceView } from "./filters.js";
 import {
@@ -4061,7 +5121,7 @@ export function createWorkspaceController(deps = {}) {
   let ui = null;
   let debug = null;
   let isInitialized = false;
-  let lastProjectBounds = null;
+  let projectBounds = null;
 
   async function init({
     root = document,
@@ -4108,6 +5168,7 @@ export function createWorkspaceController(deps = {}) {
 
       state.runtime = projectRuntimeForWorkspace(rawRuntime);
       state.boundaryIndex = createBoundaryIndex(state.runtime.boundariesGeojson);
+      projectBounds = buildProjectBounds();
 
       applyBridgedConfig();
       normalizeCurrentStateForPanelModel();
@@ -4115,7 +5176,7 @@ export function createWorkspaceController(deps = {}) {
 
       renderWorkspaceRuntimeStatus(ui, state.runtime.summary);
       renderWorkspaceFilters(ui, state);
-      refreshView({ fitMode: "initial" });
+      refreshView({ cameraMode: "initial" });
 
       isInitialized = true;
       debug.log("Workspace initialized");
@@ -4144,22 +5205,22 @@ export function createWorkspaceController(deps = {}) {
     bindWorkspacePanelEvents(ui, {
       onToggleDay(dayKey) {
         toggleArrayValueSafe(state.refinements.days, dayKey);
-        refreshView({ fitMode: getBoundaryAwareFitMode() });
+        refreshView({ cameraMode: "preserve" });
       },
 
       onToggleAppointmentType(appointmentType) {
         toggleArrayValueSafe(state.refinements.appointmentTypes, appointmentType);
-        refreshView({ fitMode: getBoundaryAwareFitMode() });
+        refreshView({ cameraMode: "preserve" });
       },
 
       onToggleOriginType(originType) {
         toggleArrayValueSafe(state.refinements.originTypes, originType);
-        refreshView({ fitMode: "preserve" });
+        refreshView({ cameraMode: "preserve" });
       },
 
       onClearBoundary() {
         state.selection.boundaryKeys = [];
-        refreshView({ fitMode: "project-subset" });
+        refreshView({ cameraMode: "project" });
       }
     });
   }
@@ -4204,6 +5265,18 @@ export function createWorkspaceController(deps = {}) {
     if (!Array.isArray(state.refinements.appointmentTypes)) {
       state.refinements.appointmentTypes = [];
     }
+
+    if (!Array.isArray(state.refinements.days)) {
+      state.refinements.days = [];
+    }
+
+    if (!Array.isArray(state.refinements.originTypes)) {
+      state.refinements.originTypes = [];
+    }
+
+    if (!Array.isArray(state.selection.boundaryKeys)) {
+      state.selection.boundaryKeys = [];
+    }
   }
 
   function applyConfig(config = null) {
@@ -4219,10 +5292,14 @@ export function createWorkspaceController(deps = {}) {
       }`
     );
 
-    refreshView({ fitMode: getBoundaryAwareFitMode() });
+    refreshView({
+      cameraMode: state.selection.boundaryKeys.length > 0
+        ? "selected-boundaries"
+        : "project"
+    });
   }
 
-  function refreshView({ fitMode = "active-subset" } = {}) {
+  function refreshView({ cameraMode = "preserve" } = {}) {
     if (!state.runtime) {
       debug?.log("Refresh skipped:no runtime");
       return;
@@ -4244,8 +5321,6 @@ export function createWorkspaceController(deps = {}) {
       ...state.results,
       ...view.counts
     };
-
-    lastProjectBounds = buildProjectSubsetBounds();
 
     clearWorkspaceLayers(state.layers);
     renderBoundaryLayer();
@@ -4282,7 +5357,7 @@ export function createWorkspaceController(deps = {}) {
       selectedOriginTypes: state.refinements.originTypes.length
     });
 
-    applyMapFit(fitMode);
+    applyMapCamera(cameraMode);
 
     debug?.log(
       [
@@ -4295,6 +5370,7 @@ export function createWorkspaceController(deps = {}) {
         `days=${state.refinements.days.length}`,
         `appointments=${state.refinements.appointmentTypes.length}`,
         `originTypes=${state.refinements.originTypes.length}`,
+        `camera=${cameraMode}`,
         `markerSelection=${state.selection.boundaryKeys.length > 0 ? "on" : "off"}`
       ].join(", ")
     );
@@ -4339,10 +5415,10 @@ export function createWorkspaceController(deps = {}) {
           toggleBoundarySelection(key);
 
           refreshView({
-            fitMode:
+            cameraMode:
               state.selection.boundaryKeys.length > 0
                 ? "selected-boundaries"
-                : "project-subset"
+                : "project"
           });
         });
       }
@@ -4363,35 +5439,20 @@ export function createWorkspaceController(deps = {}) {
     }
   }
 
-  function applyMapFit(fitMode) {
+  function applyMapCamera(cameraMode) {
     if (!state.map) return;
 
-    if (fitMode === "preserve") return;
+    if (cameraMode === "preserve") {
+      return;
+    }
 
-    if (fitMode === "selected-boundaries" || fitMode === "selected-boundary") {
+    if (cameraMode === "selected-boundaries") {
       fitToSelectedBoundaries();
       return;
     }
 
-    if (fitMode === "project-subset" || fitMode === "initial") {
-      fitToProjectSubset();
-      return;
-    }
-
-    if (fitMode === "active-subset") {
-      if (state.selection.boundaryKeys.length > 0) {
-        fitToSelectedBoundaries();
-        return;
-      }
-
-      if (state.visibleRows.length > 0) {
-        fitWorkspaceToData(state.map, state.visibleRows, {
-          padding: [48, 48]
-        });
-        return;
-      }
-
-      fitToProjectSubset();
+    if (cameraMode === "initial" || cameraMode === "project") {
+      fitToProjectBounds();
     }
   }
 
@@ -4399,55 +5460,47 @@ export function createWorkspaceController(deps = {}) {
     const features = getSelectedBoundaryFeatures();
 
     if (features.length === 0) {
-      fitToProjectSubset();
+      fitToProjectBounds();
       return;
     }
 
-    const bounds = L.latLngBounds([]);
+    const bounds = createBoundsFromGeoJsonFeatures(features);
 
-    features.forEach((feature) => {
-      const featureBounds = L.geoJSON(feature).getBounds();
-      if (featureBounds?.isValid?.()) {
-        bounds.extend(featureBounds);
-      }
-    });
-
-    if (bounds?.isValid?.()) {
-      state.map.fitBounds(bounds, {
-        paddingTopLeft: [42, 42],
-        paddingBottomRight: [430, 74],
-        maxZoom: 12
-      });
-    }
-  }
-
-  function fitToProjectSubset() {
-    if (lastProjectBounds?.isValid?.()) {
-      state.map.fitBounds(lastProjectBounds, {
-        padding: [44, 44],
-        maxZoom: 12
-      });
+    if (!bounds) {
+      fitToProjectBounds();
       return;
     }
 
-    const boundaryBounds = state.layers.boundaries?.getBounds?.();
-    if (boundaryBounds?.isValid?.()) {
-      fitWorkspaceToData(state.map, boundaryBounds, {
-        padding: [36, 36]
-      });
-    }
+    fitWorkspaceToBounds(state.map, bounds, {
+      mode: "selected-boundaries",
+      maxZoom: getSelectedBoundaryMaxZoom(features.length)
+    });
   }
 
-  function buildProjectSubsetBounds() {
-    const bounds = L.latLngBounds([]);
+  function fitToProjectBounds() {
+    const bounds =
+      projectBounds ||
+      createBoundsFromGeoJson(state.runtime?.boundariesGeojson) ||
+      createBoundsFromRows(state.populationRows) ||
+      createBoundsFromRows(state.runtime?.candidateRows || []);
 
-    state.populationRows.forEach((row) => {
-      if (Number.isFinite(row._latitude) && Number.isFinite(row._longitude)) {
-        bounds.extend([row._latitude, row._longitude]);
-      }
+    if (!bounds) return;
+
+    fitWorkspaceToBounds(state.map, bounds, {
+      mode: "project",
+      maxZoom: 12
     });
+  }
 
-    return bounds.isValid() ? bounds : null;
+  function buildProjectBounds() {
+    return (
+      createBoundsFromGeoJson(state.runtime?.boundariesGeojson) ||
+      createBoundsFromRows(state.runtime?.candidateRows || [])
+    );
+  }
+
+  function getSelectedBoundaryMaxZoom(selectedCount) {
+    return selectedCount > 1 ? 12 : 13;
   }
 
   function getSelectedBoundaryFeatures() {
@@ -4473,12 +5526,6 @@ export function createWorkspaceController(deps = {}) {
     }
 
     return `${names.length} boundaries selected`;
-  }
-
-  function getBoundaryAwareFitMode() {
-    return state.selection.boundaryKeys.length > 0
-      ? "selected-boundaries"
-      : "active-subset";
   }
 
   function destroyMap() {
@@ -4840,11 +5887,14 @@ function normalizeMonth(value) {
 
 // workspace/mapCore.js
 
+const DEFAULT_PROJECT_CENTER = [43.6532, -79.3832];
+const DEFAULT_PROJECT_ZOOM = 9;
+
 export function initWorkspaceMap(options = {}) {
   const {
     elementId = "map",
-    center = [43.6532, -79.3832],
-    zoom = 9
+    center = DEFAULT_PROJECT_CENTER,
+    zoom = DEFAULT_PROJECT_ZOOM
   } = options;
 
   if (typeof L === "undefined") {
@@ -4886,28 +5936,116 @@ export function clearWorkspaceLayers(layers) {
   });
 }
 
-export function fitWorkspaceToData(map, rowsOrBounds, options = {}) {
-  if (!map || !rowsOrBounds) return;
+export function createBoundsFromRows(rows = []) {
+  const bounds = L.latLngBounds([]);
 
-  const padding = options.padding || [24, 24];
-
-  if (Array.isArray(rowsOrBounds) && rowsOrBounds.length > 0) {
-    const latLngs = rowsOrBounds
-      .filter((row) => Number.isFinite(row._latitude) && Number.isFinite(row._longitude))
-      .map((row) => [row._latitude, row._longitude]);
-
-    if (latLngs.length === 0) return;
-
-    const bounds = L.latLngBounds(latLngs);
-    if (bounds.isValid()) {
-      map.fitBounds(bounds, { padding });
+  rows.forEach((row) => {
+    if (Number.isFinite(row?._latitude) && Number.isFinite(row?._longitude)) {
+      bounds.extend([row._latitude, row._longitude]);
     }
-    return;
+  });
+
+  return bounds.isValid() ? bounds : null;
+}
+
+export function createBoundsFromGeoJsonFeatures(features = []) {
+  const bounds = L.latLngBounds([]);
+
+  features.filter(Boolean).forEach((feature) => {
+    const featureBounds = L.geoJSON(feature).getBounds();
+
+    if (featureBounds?.isValid?.()) {
+      bounds.extend(featureBounds);
+    }
+  });
+
+  return bounds.isValid() ? bounds : null;
+}
+
+export function createBoundsFromGeoJson(geojson) {
+  if (!geojson) return null;
+
+  const bounds = L.geoJSON(geojson).getBounds();
+  return bounds?.isValid?.() ? bounds : null;
+}
+
+export function fitWorkspaceToBounds(map, bounds, options = {}) {
+  if (!map || !bounds?.isValid?.()) {
+    return false;
   }
+
+  const {
+    mode = "project",
+    animate = true,
+    maxZoom = 13
+  } = options;
+
+  invalidateMapSizeBeforeFit(map);
+
+  const fitOptions = {
+    animate,
+    maxZoom,
+    ...getResponsiveFitPadding(map, mode)
+  };
+
+  map.fitBounds(bounds, fitOptions);
+
+  return true;
+}
+
+export function fitWorkspaceToData(map, rowsOrBounds, options = {}) {
+  if (!map || !rowsOrBounds) return false;
 
   if (rowsOrBounds?.isValid?.()) {
-    map.fitBounds(rowsOrBounds, { padding });
+    return fitWorkspaceToBounds(map, rowsOrBounds, options);
   }
+
+  if (Array.isArray(rowsOrBounds)) {
+    const bounds = createBoundsFromRows(rowsOrBounds);
+    return fitWorkspaceToBounds(map, bounds, options);
+  }
+
+  return false;
+}
+
+function invalidateMapSizeBeforeFit(map) {
+  map.invalidateSize({ animate: false });
+
+  window.requestAnimationFrame?.(() => {
+    map.invalidateSize({ animate: false });
+  });
+}
+
+function getResponsiveFitPadding(map, mode) {
+  const size = map.getSize();
+  const width = Number(size?.x || 0);
+  const height = Number(size?.y || 0);
+  const isNarrow = width <= 720;
+  const isShort = height <= 520;
+
+  if (mode === "selected-boundaries") {
+    return {
+      paddingTopLeft: [
+        Math.round(width * (isNarrow ? 0.045 : 0.045)),
+        Math.round(height * (isNarrow ? 0.08 : 0.07))
+      ],
+      paddingBottomRight: [
+        Math.round(width * (isNarrow ? 0.045 : 0.06)),
+        Math.round(height * (isShort ? 0.11 : 0.09))
+      ]
+    };
+  }
+
+  return {
+    paddingTopLeft: [
+      Math.round(width * (isNarrow ? 0.055 : 0.04)),
+      Math.round(height * (isNarrow ? 0.08 : 0.06))
+    ],
+    paddingBottomRight: [
+      Math.round(width * (isNarrow ? 0.055 : 0.055)),
+      Math.round(height * (isShort ? 0.12 : 0.08))
+    ]
+  };
 }
 
 ===== workspace\markers.js =====
@@ -6314,7 +7452,7 @@ a {
 }
 
 .launcher-feedback {
-  margin: 16px 0 0;
+  margin: 0;
   font-size: 0.92rem;
   line-height: 1.45;
   color: var(--color-muted);
@@ -6438,6 +7576,20 @@ a {
   font-weight: 600;
 }
 
+.launcher-builder__summary-saved {
+  width: fit-content;
+  display: inline-flex;
+  align-items: center;
+  min-height: 26px;
+  padding: 5px 9px;
+  border-radius: 999px;
+  background: rgba(15, 118, 110, 0.1);
+  color: var(--color-success);
+  font-size: 0.8rem;
+  font-weight: 850;
+  line-height: 1.1;
+}
+
 .launcher-builder__empty {
   display: inline-flex;
   align-items: center;
@@ -6524,9 +7676,11 @@ a {
 }
 
 .launcher-chip-group--dates {
-  max-height: 220px;
+  display: grid;
+  gap: 12px;
+  max-height: 300px;
   overflow: auto;
-  padding: 2px 2px 4px;
+  padding: 2px 4px 4px 2px;
 }
 
 .launcher-chip {
@@ -6589,6 +7743,31 @@ a {
   color: var(--color-primary-strong);
 }
 
+/* Date week groups */
+
+.launcher-date-week {
+  display: grid;
+  gap: 8px;
+  padding: 10px;
+  border: 1px solid #eef2f7;
+  border-radius: var(--radius-md);
+  background: rgba(248, 250, 252, 0.72);
+}
+
+.launcher-date-week__heading {
+  font-size: 0.78rem;
+  font-weight: 850;
+  color: var(--color-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.launcher-date-week__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
 /* Responsive */
 
 @media (max-width: 720px) {
@@ -6625,13 +7804,69 @@ a {
     border-radius: var(--radius-lg);
   }
 
+  .launcher-hero {
+    padding-block: 20px;
+  }
+
   .launcher-builder__grid {
     grid-template-columns: 1fr;
   }
 
   .launcher-view-map-button,
-  .launcher-builder__save {
+  .launcher-builder__save,
+  .launcher-builder__actions .button {
     width: 100%;
+  }
+
+  .launcher-builder__actions {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
+  .launcher-chip-group--dates {
+    max-height: 340px;
+  }
+
+  .launcher-date-week {
+    padding: 9px;
+  }
+
+  .launcher-date-week__chips {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 7px;
+  }
+
+  .launcher-date-week__chips .launcher-chip {
+    width: 100%;
+    justify-content: space-between;
+    padding-inline: 10px;
+  }
+}
+
+@media (max-width: 420px) {
+  .launcher-runtime-rail__status {
+    min-width: 0;
+  }
+
+  .launcher-hero__title {
+    font-size: 1.65rem;
+  }
+
+  .launcher-section-heading__title {
+    font-size: 1.08rem;
+  }
+
+  .launcher-section-heading__description {
+    font-size: 0.9rem;
+  }
+
+  .launcher-chip-group--dates {
+    max-height: 360px;
+  }
+
+  .launcher-date-week__chips {
+    grid-template-columns: 1fr;
   }
 }
 
