@@ -1,25 +1,27 @@
 import { renderLauncherShell } from "./ui/launcherShell.js";
 import { loadRuntimeData } from "./data/loadRuntimeData.js";
-import { createBootOverlay } from "./ui/bootOverlay.js";
 import { ensureAppRuntime, getAppRuntime } from "./state/appRuntime.js";
 import { getAppMode, setAppMode, subscribeAppMode } from "./state/appMode.js";
 import { createWorkspaceController } from "./workspace/controller.js";
 import { renderWorkspaceShell } from "./workspace/renderWorkspaceShell.js";
 
 let workspaceController = null;
-let bootOverlay = null;
 let appRoot = null;
+let latestRuntimeProgress = {
+  step: "idle",
+  label: "Waiting to initialize runtime...",
+  percent: 0
+};
 
 document.addEventListener("DOMContentLoaded", async () => {
   appRoot = ensureAppRoot();
 
-  bootOverlay = createBootOverlay(appRoot);
   subscribeAppMode(() => {
     void renderApp();
   });
 
-  await preloadLauncherRuntime();
   await renderApp();
+  await preloadLauncherRuntime();
 });
 
 function ensureAppRoot() {
@@ -33,24 +35,31 @@ function ensureAppRoot() {
 }
 
 async function preloadLauncherRuntime() {
-  bootOverlay.show({
-    title: "Preparing RWK",
-    message: "Loading shared operational dataset..."
-  });
-
   try {
     await ensureAppRuntime(() =>
       loadRuntimeData((progress) => {
-        bootOverlay.update({
-          message: mapProgressToMessage(progress)
-        });
+        latestRuntimeProgress = normalizeProgress(progress);
+        updateRuntimeRail(latestRuntimeProgress);
       })
     );
 
-    bootOverlay.hide();
+    latestRuntimeProgress = {
+      step: "complete",
+      label: "Runtime ready",
+      percent: 100,
+      summary: getAppRuntime()?.summary || {}
+    };
+
+    await renderApp();
   } catch (error) {
     console.error("[RWK] launcher preload failed:", error);
-    bootOverlay.showError(error);
+    latestRuntimeProgress = {
+      step: "error",
+      label: error instanceof Error ? error.message : "Runtime failed to load.",
+      percent: 100,
+      error
+    };
+    updateRuntimeRail(latestRuntimeProgress);
   }
 }
 
@@ -77,6 +86,7 @@ async function renderLauncher() {
 
   await renderLauncherShell("landing-root", {
     runtimeData: getAppRuntime(),
+    runtimeProgress: latestRuntimeProgress,
     onOpenWorkspace() {
       setAppMode("workspace");
     }
@@ -102,7 +112,6 @@ async function renderWorkspace() {
     });
   } catch (error) {
     console.error("[RWK] workspace render failed:", error);
-    bootOverlay.showError(error);
   }
 }
 
@@ -115,6 +124,30 @@ function destroyWorkspace() {
   workspaceController = null;
 }
 
+function updateRuntimeRail(progress) {
+  const rail = document.getElementById("launcherRuntimeRail");
+  const fill = document.getElementById("launcherRuntimeRailFill");
+  const label = document.getElementById("launcherRuntimeRailLabel");
+
+  if (!rail || !fill || !label) {
+    return;
+  }
+
+  rail.classList.toggle("is-ready", progress.step === "complete");
+  rail.classList.toggle("is-error", progress.step === "error");
+  fill.style.width = `${Math.max(0, Math.min(100, progress.percent || 0))}%`;
+  label.textContent = progress.label || "Loading runtime...";
+}
+
+function normalizeProgress(progress = {}) {
+  return {
+    step: progress.step || "loading",
+    label: progress.label || mapProgressToMessage(progress),
+    percent: Number.isFinite(progress.percent) ? progress.percent : 0,
+    summary: progress.summary || null
+  };
+}
+
 function mapProgressToMessage(progress) {
   const map = {
     starting: "Preparing runtime data...",
@@ -123,8 +156,9 @@ function mapProgressToMessage(progress) {
     manifest: "Manifest loaded.",
     events: "Events snapshot loaded.",
     export: "Spatial export loaded.",
+    normalizing: "Indexing runtime...",
     complete: "Runtime is ready."
   };
 
-  return map[progress?.step] || progress?.label || "Working...";
+  return map[progress?.step] || "Working...";
 }

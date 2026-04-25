@@ -1,0 +1,58 @@
+.boot-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 4000;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: rgba(15, 23, 42, 0.28);
+  backdrop-filter: blur(6px);
+}
+
+.boot-overlay[hidden] {
+  display: none;
+}
+
+.boot-overlay__card {
+  width: min(440px, 100%);
+  display: grid;
+  gap: 14px;
+  padding: 24px;
+  border: 1px solid var(--color-border);
+  border-radius: 22px;
+  background: var(--color-surface);
+  box-shadow: 0 18px 60px rgba(15, 23, 42, 0.18);
+}
+
+.boot-overlay__title {
+  margin: 0;
+  font-size: 1.08rem;
+  line-height: 1.2;
+}
+
+.boot-overlay__message {
+  margin: 0;
+  font-size: 0.94rem;
+  line-height: 1.5;
+  color: var(--color-muted);
+}
+
+.boot-overlay__spinner {
+  width: 44px;
+  height: 44px;
+  border-radius: 999px;
+  border: 3px solid #dbeafe;
+  border-top-color: var(--color-primary);
+  animation: rwk-spin 0.9s linear infinite;
+}
+
+.boot-overlay.is-error .boot-overlay__spinner {
+  border-color: #fecaca;
+  border-top-color: var(--color-danger);
+}
+
+@keyframes rwk-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}

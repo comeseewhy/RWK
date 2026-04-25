@@ -12,45 +12,89 @@ export const RUNTIME_DATA_CONFIG = Object.freeze({
   exportCsvPath: "csv/export_confirmed_verified.csv"
 });
 
+const RUNTIME_STEPS = Object.freeze({
+  starting: 4,
+  boundaries: 18,
+  origins: 30,
+  manifest: 44,
+  events: 64,
+  export: 82,
+  normalizing: 92,
+  complete: 100
+});
+
 export async function loadRuntimeData(onProgress = () => {}) {
   const progress = createProgressReporter(onProgress);
 
   progress("starting", {
-    label: "Preparing runtime data..."
-  });
-
-  const boundariesGeojson = await fetchJson(RUNTIME_DATA_CONFIG.boundariesUrl);
-  progress("boundaries", {
-    label: "Boundaries loaded",
-    count: Array.isArray(boundariesGeojson?.features)
-      ? boundariesGeojson.features.length
-      : 0
-  });
-
-  const origins = await fetchJson(RUNTIME_DATA_CONFIG.originsUrl);
-  progress("origins", {
-    label: "Origins loaded",
-    count: Array.isArray(origins) ? origins.length : 0
+    label: "Preparing shared runtime...",
+    percent: RUNTIME_STEPS.starting
   });
 
   const manifestUrl = buildAssetUrl(RUNTIME_DATA_CONFIG.manifestPath);
   const eventsUrl = buildAssetUrl(RUNTIME_DATA_CONFIG.eventsCsvPath);
   const exportUrl = buildAssetUrl(RUNTIME_DATA_CONFIG.exportCsvPath);
 
-  const manifest = await fetchJson(manifestUrl);
-  progress("manifest", {
-    label: "Manifest loaded",
-    updatedAt: manifest?.updated_at || ""
+  const boundariesPromise = fetchJson(RUNTIME_DATA_CONFIG.boundariesUrl).then((data) => {
+    progress("boundaries", {
+      label: "Boundaries loaded",
+      percent: RUNTIME_STEPS.boundaries,
+      count: Array.isArray(data?.features) ? data.features.length : 0
+    });
+    return data;
   });
 
-  const eventsCsvText = await fetchText(eventsUrl);
-  progress("events", {
-    label: "Events snapshot loaded"
+  const originsPromise = fetchJson(RUNTIME_DATA_CONFIG.originsUrl).then((data) => {
+    progress("origins", {
+      label: "Origins loaded",
+      percent: RUNTIME_STEPS.origins,
+      count: Array.isArray(data) ? data.length : 0
+    });
+    return data;
   });
 
-  const exportCsvText = await fetchText(exportUrl);
-  progress("export", {
-    label: "Spatial export loaded"
+  const manifestPromise = fetchJson(manifestUrl).then((data) => {
+    progress("manifest", {
+      label: "Manifest loaded",
+      percent: RUNTIME_STEPS.manifest,
+      updatedAt: data?.updated_at || ""
+    });
+    return data;
+  });
+
+  const eventsPromise = fetchText(eventsUrl).then((text) => {
+    progress("events", {
+      label: "Events snapshot loaded",
+      percent: RUNTIME_STEPS.events
+    });
+    return text;
+  });
+
+  const exportPromise = fetchText(exportUrl).then((text) => {
+    progress("export", {
+      label: "Spatial export loaded",
+      percent: RUNTIME_STEPS.export
+    });
+    return text;
+  });
+
+  const [
+    boundariesGeojson,
+    origins,
+    manifest,
+    eventsCsvText,
+    exportCsvText
+  ] = await Promise.all([
+    boundariesPromise,
+    originsPromise,
+    manifestPromise,
+    eventsPromise,
+    exportPromise
+  ]);
+
+  progress("normalizing", {
+    label: "Indexing runtime...",
+    percent: RUNTIME_STEPS.normalizing
   });
 
   const runtimeData = normalizeRuntimeData({
@@ -62,7 +106,8 @@ export async function loadRuntimeData(onProgress = () => {}) {
   });
 
   progress("complete", {
-    label: "Runtime data ready",
+    label: "Runtime ready",
+    percent: RUNTIME_STEPS.complete,
     summary: runtimeData.summary
   });
 
@@ -103,6 +148,7 @@ function createProgressReporter(onProgress) {
     try {
       onProgress({
         step,
+        percent: detail.percent ?? RUNTIME_STEPS[step] ?? 0,
         ...detail
       });
     } catch (error) {

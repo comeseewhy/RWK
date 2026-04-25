@@ -1,80 +1,97 @@
-import { createRenderConfig } from "../config/renderConfig.schema.js";
-import {
-  ANALYSIS_BUILDER_DATE_MODES,
-  ANALYSIS_BUILDER_ORGANIZER_OPTIONS
-} from "../config/analysisProfiles.js";
+// ui/analysisBuilder.js
 
-export function renderAnalysisBuilder() {
+import { createRenderConfig } from "../config/renderConfig.schema.js";
+
+const MONTH_LABELS = Object.freeze([
+  "January",
+  "February",
+  "March",
+  "April",
+  "May",
+  "June",
+  "July",
+  "August",
+  "September",
+  "October",
+  "November",
+  "December"
+]);
+
+let builderState = createEmptyBuilderState();
+let builderDateIndex = createEmptyDateIndex();
+
+export function renderAnalysisBuilder(runtimeData = null) {
+  builderState = createEmptyBuilderState();
+  builderDateIndex = buildDateIndex(runtimeData);
+
   return `
     <section class="launcher-builder" aria-labelledby="analysisBuilderTitle">
       <div class="launcher-section-heading">
         <p class="launcher-section-heading__eyebrow">Builder</p>
         <h2 id="analysisBuilderTitle" class="launcher-section-heading__title">
-          Build an analysis
+          Build a time frame
         </h2>
         <p class="launcher-section-heading__description">
-          Use organizer and time logic as the entry question, then refine with boundaries,
-          visit patterns, and origins inside the workspace.
+          Select one year, optionally narrow to one month, then optionally choose
+          one or more dates. Leave month or date blank to keep the selection broader.
         </p>
       </div>
 
-      <div class="launcher-builder__grid">
+      <div class="launcher-builder__tree">
         <div class="launcher-field">
-          <span class="launcher-label">Organizer type</span>
-          <div class="launcher-chip-group" id="builderOrganizerGroup">
-            ${ANALYSIS_BUILDER_ORGANIZER_OPTIONS.map(
-              (option) => `
-                <button
-                  class="launcher-chip"
-                  type="button"
-                  data-builder-organizer="${option.value}"
-                  aria-pressed="false"
-                >
-                  ${option.label}
-                </button>
-              `
-            ).join("")}
+          <span class="launcher-label">Year</span>
+          <div
+            id="builderYearGroup"
+            class="launcher-chip-group launcher-chip-group--tree"
+            aria-label="Available years"
+          >
+            ${renderYearButtons()}
           </div>
         </div>
 
-        <div class="launcher-field">
-          <label class="launcher-label" for="builderDateMode">Date mode</label>
-          <select id="builderDateMode" class="launcher-input">
-            ${ANALYSIS_BUILDER_DATE_MODES.map(
-              (option) => `<option value="${option.value}">${option.label}</option>`
-            ).join("")}
-          </select>
+        <div class="launcher-field" id="builderMonthField" hidden>
+          <span class="launcher-label">Month</span>
+          <div
+            id="builderMonthGroup"
+            class="launcher-chip-group launcher-chip-group--tree"
+            aria-label="Available months"
+          ></div>
         </div>
 
-        <div class="launcher-field" id="builderSingleDateField" hidden>
-          <label class="launcher-label" for="builderSingleDate">Date</label>
-          <input id="builderSingleDate" class="launcher-input" type="date" />
-        </div>
-
-        <div class="launcher-field" id="builderRangeStartField" hidden>
-          <label class="launcher-label" for="builderRangeStart">Range start</label>
-          <input id="builderRangeStart" class="launcher-input" type="date" />
-        </div>
-
-        <div class="launcher-field" id="builderRangeEndField" hidden>
-          <label class="launcher-label" for="builderRangeEnd">Range end</label>
-          <input id="builderRangeEnd" class="launcher-input" type="date" />
-        </div>
-
-        <div class="launcher-field">
-          <label class="launcher-label" for="builderKeyword">Keyword</label>
-          <input
-            id="builderKeyword"
-            class="launcher-input"
-            type="text"
-            placeholder="Optional keyword"
-          />
+        <div class="launcher-field" id="builderDateField" hidden>
+          <span class="launcher-label">Date</span>
+          <div
+            id="builderDateGroup"
+            class="launcher-chip-group launcher-chip-group--dates"
+            aria-label="Available dates"
+          ></div>
         </div>
       </div>
 
+      <div
+        id="builderSelectionSummary"
+        class="launcher-builder__summary"
+        aria-live="polite"
+      >
+        No time frame selected yet.
+      </div>
+
       <div class="launcher-builder__actions">
-        <button id="builderLaunchButton" class="button button--primary" type="button">
-          Open analysis
+        <button
+          id="builderLaunchButton"
+          class="button button--primary launcher-builder__save"
+          type="button"
+          disabled
+        >
+          Save time frame and view map
+        </button>
+
+        <button
+          id="builderClearButton"
+          class="button"
+          type="button"
+        >
+          Clear selection
         </button>
       </div>
 
@@ -83,148 +100,537 @@ export function renderAnalysisBuilder() {
   `;
 }
 
-export function bindAnalysisBuilder({ onLaunch }) {
-  const organizerButtons = [
-    ...document.querySelectorAll("[data-builder-organizer]")
-  ];
-  const dateModeSelect = document.getElementById("builderDateMode");
-  const singleDateField = document.getElementById("builderSingleDateField");
-  const rangeStartField = document.getElementById("builderRangeStartField");
-  const rangeEndField = document.getElementById("builderRangeEndField");
+export function bindAnalysisBuilder({ onLaunch } = {}) {
+  const yearGroup = document.getElementById("builderYearGroup");
+  const monthField = document.getElementById("builderMonthField");
+  const monthGroup = document.getElementById("builderMonthGroup");
+  const dateField = document.getElementById("builderDateField");
+  const dateGroup = document.getElementById("builderDateGroup");
   const launchButton = document.getElementById("builderLaunchButton");
+  const clearButton = document.getElementById("builderClearButton");
+  const summary = document.getElementById("builderSelectionSummary");
   const feedback = document.getElementById("builderFeedback");
 
-  const state = {
-    organizers: []
-  };
+  yearGroup?.addEventListener("click", (event) => {
+    const button = event.target.closest("[data-builder-year]");
+    if (!button) return;
 
-  organizerButtons.forEach((button) => {
-    button.addEventListener("click", () => {
-      const value = button.dataset.builderOrganizer;
-      const index = state.organizers.indexOf(value);
+    const nextYear = button.dataset.builderYear || "";
 
-      if (index >= 0) {
-        state.organizers.splice(index, 1);
-      } else {
-        state.organizers.push(value);
-      }
+    builderState.year = builderState.year === nextYear ? "" : nextYear;
+    builderState.month = "";
+    builderState.dates = [];
+    builderState.savedConfig = null;
 
-      syncOrganizerButtons(organizerButtons, state.organizers);
-    });
+    syncBuilderUi();
   });
 
-  dateModeSelect?.addEventListener("change", () => {
-    syncDateFields(dateModeSelect.value, {
-      singleDateField,
-      rangeStartField,
-      rangeEndField
-    });
+  monthGroup?.addEventListener("click", (event) => {
+    const button = event.target.closest("[data-builder-month]");
+    if (!button) return;
+
+    const nextMonth = button.dataset.builderMonth || "";
+
+    builderState.month = builderState.month === nextMonth ? "" : nextMonth;
+    builderState.dates = [];
+    builderState.savedConfig = null;
+
+    syncBuilderUi();
+  });
+
+  dateGroup?.addEventListener("click", (event) => {
+    const button = event.target.closest("[data-builder-date]");
+    if (!button) return;
+
+    toggleDate(button.dataset.builderDate || "");
+    builderState.savedConfig = null;
+
+    syncBuilderUi();
   });
 
   launchButton?.addEventListener("click", () => {
     try {
-      const config = buildAnalysisRenderConfig({
-        organizers: state.organizers,
-        dateMode: dateModeSelect?.value || "today",
-        singleDate: document.getElementById("builderSingleDate")?.value || "",
-        rangeStart: document.getElementById("builderRangeStart")?.value || "",
-        rangeEnd: document.getElementById("builderRangeEnd")?.value || "",
-        keyword: document.getElementById("builderKeyword")?.value || ""
-      });
+      const config = buildTimeFrameRenderConfig(builderState);
+      builderState.savedConfig = config;
 
-      feedback.textContent = `Opening workspace: ${config.meta.label}`;
+      if (feedback) {
+        feedback.textContent = `Saved: ${config.meta.label}`;
+      }
+
+      syncBuilderUi();
 
       if (typeof onLaunch === "function") {
         onLaunch(config);
       }
     } catch (error) {
-      feedback.textContent = error.message;
+      if (feedback) {
+        feedback.textContent = error.message;
+      }
     }
   });
 
-  syncDateFields(dateModeSelect?.value || "today", {
-    singleDateField,
-    rangeStartField,
-    rangeEndField
+  clearButton?.addEventListener("click", () => {
+    builderState = createEmptyBuilderState();
+
+    if (feedback) {
+      feedback.textContent = "Time frame selection cleared.";
+    }
+
+    syncBuilderUi();
   });
+
+  syncBuilderUi();
+
+  function syncBuilderUi() {
+    syncActiveButtons(yearGroup, "builderYear", [builderState.year]);
+
+    const availableMonths = builderState.year
+      ? builderDateIndex.monthsByYear.get(builderState.year) || []
+      : [];
+
+    if (monthField) {
+      monthField.hidden = !builderState.year || availableMonths.length === 0;
+    }
+
+    if (monthGroup) {
+      monthGroup.innerHTML = renderMonthButtons(builderState.year, availableMonths);
+      syncActiveButtons(monthGroup, "builderMonth", [builderState.month]);
+    }
+
+    const dateKey =
+      builderState.year && builderState.month
+        ? `${builderState.year}-${builderState.month}`
+        : "";
+
+    const availableDates = dateKey
+      ? builderDateIndex.datesByYearMonth.get(dateKey) || []
+      : [];
+
+    if (dateField) {
+      dateField.hidden = !builderState.year || !builderState.month || availableDates.length === 0;
+    }
+
+    if (dateGroup) {
+      dateGroup.innerHTML = renderDateButtons(dateKey, availableDates);
+      syncActiveButtons(dateGroup, "builderDate", builderState.dates);
+    }
+
+    if (launchButton) {
+      launchButton.disabled = !builderState.year;
+    }
+
+    if (summary) {
+      summary.innerHTML = buildSelectionSummaryHtml();
+    }
+  }
 }
 
-export function buildAnalysisRenderConfig({
-  organizers,
-  dateMode,
-  singleDate,
-  rangeStart,
-  rangeEnd,
-  keyword
-}) {
-  if (!Array.isArray(organizers) || organizers.length === 0) {
-    throw new Error("Select at least one organizer type.");
+export function buildTimeFrameRenderConfig(state = builderState) {
+  const safeYear = String(state.year || "").trim();
+  const safeMonth = normalizeMonth(state.month);
+  const safeDates = Array.isArray(state.dates)
+    ? [...state.dates].filter(Boolean).sort()
+    : [];
+
+  if (!safeYear) {
+    throw new Error("Select a year before saving a time frame.");
   }
 
-  const normalizedKeyword = String(keyword || "").trim();
+  const label = buildConfigLabel({
+    year: safeYear,
+    month: safeMonth,
+    dates: safeDates
+  });
 
-  const config = createRenderConfig({
+  const description = buildConfigDescription({
+    year: safeYear,
+    month: safeMonth,
+    dates: safeDates
+  });
+
+  return createRenderConfig({
     meta: {
-      presetId: "ANALYSIS_BUILDER",
-      selectionPath: "builder/custom-analysis",
-      label: "Custom analysis",
-      description: "Manual launcher-defined analysis."
+      presetId: "TIME_FRAME_BUILDER",
+      selectionPath: "builder/time-frame",
+      label,
+      description
     },
     filters: {
-      keyword: normalizedKeyword,
-      organizers: [...organizers]
+      year: safeYear,
+      month: safeMonth,
+      dates: safeDates
+    },
+    visualization: {
+      showMap: true,
+      showBoundaries: true,
+      showJobs: true,
+      showOrigins: true,
+      fitToVisible: true
     },
     analytics: {
-      mode: "standard",
-      groupBy: null,
+      mode: "time_frame",
+      groupBy: safeDates.length > 0 ? "date" : safeMonth ? "day" : "month",
       sortBy: "date"
     }
   });
-
-  if (dateMode === "today") {
-    config.filters.timeWindow = "upcoming";
-    config.meta.description = "Organizer-based analysis for today and immediate upcoming activity.";
-  }
-
-  if (dateMode === "this_week") {
-    config.meta.description = "Organizer-based analysis for this week.";
-    config.analytics.groupBy = "day";
-  }
-
-  if (dateMode === "custom_date") {
-    if (!singleDate) {
-      throw new Error("Choose a custom date.");
-    }
-
-    config.meta.description = `Organizer-based analysis for ${singleDate}.`;
-    config.filters.customDate = singleDate;
-  }
-
-  if (dateMode === "custom_range") {
-    if (!rangeStart || !rangeEnd) {
-      throw new Error("Choose both range start and range end.");
-    }
-
-    config.meta.description = `Organizer-based analysis for ${rangeStart} to ${rangeEnd}.`;
-    config.filters.customRangeStart = rangeStart;
-    config.filters.customRangeEnd = rangeEnd;
-  }
-
-  return config;
 }
 
-function syncOrganizerButtons(buttons, selectedValues) {
-  const selected = new Set(selectedValues);
+function createEmptyBuilderState() {
+  return {
+    year: "",
+    month: "",
+    dates: [],
+    savedConfig: null
+  };
+}
 
-  buttons.forEach((button) => {
-    const isActive = selected.has(button.dataset.builderOrganizer);
+function createEmptyDateIndex() {
+  return {
+    years: [],
+    monthsByYear: new Map(),
+    datesByYearMonth: new Map(),
+    counts: new Map()
+  };
+}
+
+function buildDateIndex(runtimeData) {
+  const rows = getRuntimeRows(runtimeData);
+  const years = new Set();
+  const monthsByYear = new Map();
+  const datesByYearMonth = new Map();
+  const counts = new Map();
+
+  rows.forEach((row) => {
+    const parts = getRowDateParts(row);
+    if (!parts) return;
+
+    years.add(parts.year);
+
+    if (!monthsByYear.has(parts.year)) {
+      monthsByYear.set(parts.year, new Set());
+    }
+
+    monthsByYear.get(parts.year).add(parts.month);
+
+    const yearMonthKey = `${parts.year}-${parts.month}`;
+
+    if (!datesByYearMonth.has(yearMonthKey)) {
+      datesByYearMonth.set(yearMonthKey, new Set());
+    }
+
+    datesByYearMonth.get(yearMonthKey).add(parts.isoDate);
+
+    incrementCount(counts, `year:${parts.year}`);
+    incrementCount(counts, `month:${yearMonthKey}`);
+    incrementCount(counts, `date:${parts.isoDate}`);
+  });
+
+  return {
+    years: [...years].sort((a, b) => Number(b) - Number(a)),
+    monthsByYear: mapSetValues(monthsByYear, (values) =>
+      [...values].sort((a, b) => Number(a) - Number(b))
+    ),
+    datesByYearMonth: mapSetValues(datesByYearMonth, (values) =>
+      [...values].sort()
+    ),
+    counts
+  };
+}
+
+function getRuntimeRows(runtimeData) {
+  if (!runtimeData || typeof runtimeData !== "object") {
+    return [];
+  }
+
+  if (Array.isArray(runtimeData.candidateRows)) {
+    return runtimeData.candidateRows;
+  }
+
+  if (Array.isArray(runtimeData.derivedRows)) {
+    return runtimeData.derivedRows;
+  }
+
+  if (Array.isArray(runtimeData.joinedRows)) {
+    return runtimeData.joinedRows;
+  }
+
+  if (Array.isArray(runtimeData.exportRows)) {
+    return runtimeData.exportRows;
+  }
+
+  if (Array.isArray(runtimeData.eventsRows)) {
+    return runtimeData.eventsRows;
+  }
+
+  return [];
+}
+
+function getRowDateParts(row) {
+  const date = getRowDate(row);
+
+  if (!(date instanceof Date) || Number.isNaN(date.getTime())) {
+    return null;
+  }
+
+  const year = String(date.getFullYear());
+  const month = normalizeMonth(date.getMonth() + 1);
+  const day = normalizeDay(date.getDate());
+  const isoDate = `${year}-${month}-${day}`;
+
+  return {
+    year,
+    month,
+    day,
+    isoDate
+  };
+}
+
+function getRowDate(row) {
+  if (row?._parsedDate instanceof Date && !Number.isNaN(row._parsedDate.getTime())) {
+    return row._parsedDate;
+  }
+
+  const raw =
+    row?._dateValue ||
+    row?.date ||
+    row?.start_date ||
+    row?.event_date ||
+    row?.start_time ||
+    row?.created_at ||
+    row?.updated_at ||
+    "";
+
+  if (!raw) {
+    return null;
+  }
+
+  const parsed = new Date(raw);
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
+}
+
+function renderYearButtons() {
+  if (builderDateIndex.years.length === 0) {
+    return `
+      <span class="launcher-builder__empty">
+        No dated records were found in the loaded runtime.
+      </span>
+    `;
+  }
+
+  return builderDateIndex.years
+    .map((year) =>
+      renderChipButton({
+        datasetKey: "builderYear",
+        value: year,
+        label: year,
+        count: getCount(`year:${year}`)
+      })
+    )
+    .join("");
+}
+
+function renderMonthButtons(year, months) {
+  if (!year || !Array.isArray(months) || months.length === 0) {
+    return "";
+  }
+
+  return months
+    .map((month) =>
+      renderChipButton({
+        datasetKey: "builderMonth",
+        value: month,
+        label: MONTH_LABELS[Number(month) - 1] || month,
+        count: getCount(`month:${year}-${month}`)
+      })
+    )
+    .join("");
+}
+
+function renderDateButtons(yearMonthKey, dates) {
+  if (!yearMonthKey || !Array.isArray(dates) || dates.length === 0) {
+    return "";
+  }
+
+  return dates
+    .map((isoDate) => {
+      const date = new Date(`${isoDate}T00:00:00`);
+      const label = Number.isNaN(date.getTime())
+        ? isoDate
+        : new Intl.DateTimeFormat(undefined, {
+            weekday: "short",
+            month: "short",
+            day: "numeric"
+          }).format(date);
+
+      return renderChipButton({
+        datasetKey: "builderDate",
+        value: isoDate,
+        label,
+        count: getCount(`date:${isoDate}`)
+      });
+    })
+    .join("");
+}
+
+function renderChipButton({ datasetKey, value, label, count }) {
+  return `
+    <button
+      class="launcher-chip launcher-chip--date-tree"
+      type="button"
+      data-${camelToKebab(datasetKey)}="${escapeHtml(value)}"
+      aria-pressed="false"
+    >
+      <span class="launcher-chip__label">${escapeHtml(label)}</span>
+      <span class="launcher-chip__count">${Number(count || 0).toLocaleString()}</span>
+    </button>
+  `;
+}
+
+function buildSelectionSummaryHtml() {
+  const parts = [];
+
+  if (builderState.year) {
+    parts.push(`<strong>${escapeHtml(builderState.year)}</strong>`);
+  }
+
+  if (builderState.month) {
+    const monthLabel = MONTH_LABELS[Number(builderState.month) - 1] || builderState.month;
+    parts.push(`<strong>${escapeHtml(monthLabel)}</strong>`);
+  }
+
+  if (builderState.dates.length > 0) {
+    parts.push(`<strong>${builderState.dates.length} selected date${builderState.dates.length === 1 ? "" : "s"}</strong>`);
+  }
+
+  if (parts.length === 0) {
+    return "No time frame selected yet.";
+  }
+
+  const count = getCurrentSelectionCount();
+
+  return `
+    <span>${parts.join(" / ")}</span>
+    <span class="launcher-builder__summary-meta">
+      ${count.toLocaleString()} matching record${count === 1 ? "" : "s"} before map-side refinements.
+    </span>
+  `;
+}
+
+function getCurrentSelectionCount() {
+  if (!builderState.year) {
+    return 0;
+  }
+
+  if (builderState.dates.length > 0) {
+    return builderState.dates.reduce(
+      (total, isoDate) => total + getCount(`date:${isoDate}`),
+      0
+    );
+  }
+
+  if (builderState.month) {
+    return getCount(`month:${builderState.year}-${builderState.month}`);
+  }
+
+  return getCount(`year:${builderState.year}`);
+}
+
+function buildConfigLabel({ year, month, dates }) {
+  if (dates.length > 0) {
+    return `${year} ${MONTH_LABELS[Number(month) - 1] || month}: ${dates.length} selected date${dates.length === 1 ? "" : "s"}`;
+  }
+
+  if (month) {
+    return `${MONTH_LABELS[Number(month) - 1] || month} ${year}`;
+  }
+
+  return `${year}`;
+}
+
+function buildConfigDescription({ year, month, dates }) {
+  if (dates.length > 0) {
+    return `Launcher-defined time frame for ${dates.length} selected date${dates.length === 1 ? "" : "s"} in ${MONTH_LABELS[Number(month) - 1] || month} ${year}.`;
+  }
+
+  if (month) {
+    return `Launcher-defined time frame for all available records in ${MONTH_LABELS[Number(month) - 1] || month} ${year}.`;
+  }
+
+  return `Launcher-defined time frame for all available records in ${year}.`;
+}
+
+function toggleDate(isoDate) {
+  if (!isoDate) return;
+
+  const index = builderState.dates.indexOf(isoDate);
+
+  if (index >= 0) {
+    builderState.dates.splice(index, 1);
+  } else {
+    builderState.dates.push(isoDate);
+  }
+
+  builderState.dates.sort();
+}
+
+function syncActiveButtons(container, datasetKey, selectedValues) {
+  if (!container) return;
+
+  const selected = new Set((selectedValues || []).filter(Boolean));
+  const selector = `[data-${camelToKebab(datasetKey)}]`;
+
+  container.querySelectorAll(selector).forEach((button) => {
+    const isActive = selected.has(button.dataset[datasetKey]);
     button.classList.toggle("is-active", isActive);
     button.setAttribute("aria-pressed", String(isActive));
   });
 }
 
-function syncDateFields(mode, fields) {
-  fields.singleDateField.hidden = mode !== "custom_date";
-  fields.rangeStartField.hidden = mode !== "custom_range";
-  fields.rangeEndField.hidden = mode !== "custom_range";
+function getCount(key) {
+  return builderDateIndex.counts.get(key) || 0;
+}
+
+function incrementCount(map, key) {
+  map.set(key, (map.get(key) || 0) + 1);
+}
+
+function mapSetValues(sourceMap, transform) {
+  const result = new Map();
+
+  sourceMap.forEach((value, key) => {
+    result.set(key, transform(value));
+  });
+
+  return result;
+}
+
+function normalizeMonth(value) {
+  const number = Number(value);
+  if (!Number.isFinite(number) || number < 1 || number > 12) {
+    return "";
+  }
+
+  return String(number).padStart(2, "0");
+}
+
+function normalizeDay(value) {
+  const number = Number(value);
+  if (!Number.isFinite(number) || number < 1 || number > 31) {
+    return "";
+  }
+
+  return String(number).padStart(2, "0");
+}
+
+function camelToKebab(value) {
+  return String(value).replace(/[A-Z]/g, (char) => `-${char.toLowerCase()}`);
+}
+
+function escapeHtml(value) {
+  return String(value ?? "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#39;");
 }

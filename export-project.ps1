@@ -33,6 +33,7 @@ $includePatterns = @(
     "state\*.js",
     "ui\*.js",
     "workspace\*.js"
+    "styles\*.css"
 )
 
 # =========================================================

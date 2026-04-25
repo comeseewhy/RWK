@@ -25,7 +25,8 @@ export function computeWorkspaceView({
 
   const jobsAreEnabled =
     safeRefinements.days.length > 0 ||
-    safeRefinements.appointmentTypes.length > 0;
+    safeRefinements.appointmentTypes.length > 0 ||
+    hasLauncherTimeFrame(config);
 
   const refinementFilteredRows = configFilteredRows.filter((row) =>
     matchesWorkspaceRefinements(row, safeRefinements)
@@ -87,11 +88,13 @@ function normalizeSelection(selection = {}) {
 function matchesConfigFilters(row, config) {
   if (!config) return true;
 
-  const organizers = config?.filters?.organizers || [];
-  const appointmentTypes = config?.filters?.appointmentTypes || [];
+  const organizers = normalizeArray(config?.filters?.organizers);
+  const appointmentTypes = normalizeArray(config?.filters?.appointmentTypes);
   const timeWindow = config?.filters?.timeWindow || "all";
-  const visitBuckets = config?.filters?.visitBuckets || [];
-  const year = config?.filters?.year || "all";
+  const visitBuckets = normalizeArray(config?.filters?.visitBuckets);
+  const year = String(config?.filters?.year || "all");
+  const month = normalizeMonth(config?.filters?.month || "");
+  const dates = normalizeArray(config?.filters?.dates);
   const keyword = String(config?.filters?.keyword || "").trim().toLowerCase();
 
   const configBoundaryKeys = Array.isArray(config?.boundary?.selectedBoundaryKeys)
@@ -112,7 +115,7 @@ function matchesConfigFilters(row, config) {
     return false;
   }
 
-  if (year !== "all" && row._year !== year) {
+  if (!matchesYearMonthDate(row, { year, month, dates })) {
     return false;
   }
 
@@ -125,6 +128,36 @@ function matchesConfigFilters(row, config) {
   }
 
   if (keyword && !String(row._keywordBlob || "").includes(keyword)) {
+    return false;
+  }
+
+  return true;
+}
+
+function matchesYearMonthDate(row, { year, month, dates }) {
+  const hasYearFilter = year && year !== "all";
+  const hasMonthFilter = Boolean(month);
+  const hasDateFilter = Array.isArray(dates) && dates.length > 0;
+
+  if (!hasYearFilter && !hasMonthFilter && !hasDateFilter) {
+    return true;
+  }
+
+  const parts = getRowDateParts(row);
+
+  if (!parts) {
+    return false;
+  }
+
+  if (hasYearFilter && parts.year !== year) {
+    return false;
+  }
+
+  if (hasMonthFilter && parts.month !== month) {
+    return false;
+  }
+
+  if (hasDateFilter && !dates.includes(parts.isoDate)) {
     return false;
   }
 
@@ -165,4 +198,72 @@ function matchesOriginVisibility(origin, refinements) {
   }
 
   return refinements.originTypes.includes(origin._typeKey);
+}
+
+function hasLauncherTimeFrame(config) {
+  if (!config?.filters) {
+    return false;
+  }
+
+  const year = String(config.filters.year || "all");
+  const month = String(config.filters.month || "");
+  const dates = normalizeArray(config.filters.dates);
+
+  return year !== "all" || Boolean(month) || dates.length > 0;
+}
+
+function getRowDateParts(row) {
+  const date = getRowDate(row);
+
+  if (!(date instanceof Date) || Number.isNaN(date.getTime())) {
+    return null;
+  }
+
+  const year = String(date.getFullYear());
+  const month = normalizeMonth(date.getMonth() + 1);
+  const day = String(date.getDate()).padStart(2, "0");
+  const isoDate = `${year}-${month}-${day}`;
+
+  return {
+    year,
+    month,
+    day,
+    isoDate
+  };
+}
+
+function getRowDate(row) {
+  if (row?._parsedDate instanceof Date && !Number.isNaN(row._parsedDate.getTime())) {
+    return row._parsedDate;
+  }
+
+  const raw =
+    row?._dateValue ||
+    row?.date ||
+    row?.start_date ||
+    row?.event_date ||
+    row?.start_time ||
+    row?.created_at ||
+    row?.updated_at ||
+    "";
+
+  if (!raw) {
+    return null;
+  }
+
+  const parsed = new Date(raw);
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
+}
+
+function normalizeArray(value) {
+  return Array.isArray(value) ? value.filter(Boolean) : [];
+}
+
+function normalizeMonth(value) {
+  const number = Number(value);
+  if (!Number.isFinite(number) || number < 1 || number > 12) {
+    return "";
+  }
+
+  return String(number).padStart(2, "0");
 }

@@ -14,6 +14,8 @@ export const DEFAULT_RENDER_CONFIG = Object.freeze({
     appointmentTypes: [],
     days: [],
     year: "all",
+    month: "",
+    dates: [],
     visitBuckets: [],
     timeWindow: "all"
   },
@@ -53,8 +55,9 @@ export function cloneRenderConfig(base = DEFAULT_RENDER_CONFIG) {
 
 export function createRenderConfig(overrides = {}) {
   const base = cloneRenderConfig(DEFAULT_RENDER_CONFIG);
-
+  const filterOverrides = overrides.filters || {};
   const boundaryOverrides = overrides.boundary || {};
+
   const selectedBoundaryKeys = Array.isArray(boundaryOverrides.selectedBoundaryKeys)
     ? [...boundaryOverrides.selectedBoundaryKeys]
     : boundaryOverrides.selectedBoundaryKey
@@ -72,7 +75,15 @@ export function createRenderConfig(overrides = {}) {
 
     filters: {
       ...base.filters,
-      ...(overrides.filters || {})
+      ...filterOverrides,
+      organizers: cloneArray(filterOverrides.organizers, base.filters.organizers),
+      appointmentTypes: cloneArray(
+        filterOverrides.appointmentTypes,
+        base.filters.appointmentTypes
+      ),
+      days: cloneArray(filterOverrides.days, base.filters.days),
+      dates: cloneArray(filterOverrides.dates, base.filters.dates),
+      visitBuckets: cloneArray(filterOverrides.visitBuckets, base.filters.visitBuckets)
     },
 
     boundary: {
@@ -112,4 +123,8 @@ export function isRenderConfig(value) {
       value.visualization &&
       value.analytics
   );
+}
+
+function cloneArray(value, fallback = []) {
+  return Array.isArray(value) ? [...value] : [...fallback];
 }
