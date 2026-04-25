@@ -3,8 +3,8 @@
   grid-template-columns: auto minmax(0, 1fr);
   align-items: center;
   gap: 10px;
-  min-height: 38px;
-  padding: 6px 10px;
+  min-height: 40px;
+  padding: 7px 10px;
   border-top: 1px solid var(--color-border);
   background: rgba(255, 255, 255, 0.96);
 }
@@ -32,4 +32,28 @@
   line-height: 1.35;
   white-space: nowrap;
   word-break: normal;
+}
+
+@media (max-width: 640px) {
+  .debug-strip {
+    grid-template-columns: 1fr;
+    gap: 5px;
+    min-height: 0;
+    padding: 9px 10px 12px;
+    border-top: 1px solid var(--color-border);
+    background: #ffffff;
+  }
+
+  .debug-strip__title {
+    font-size: 0.7rem;
+  }
+
+  .debug-output {
+    max-height: 74px;
+    overflow: auto;
+    padding: 6px 0 0;
+    font-size: 0.7rem;
+    line-height: 1.4;
+    white-space: pre-wrap;
+  }
 }

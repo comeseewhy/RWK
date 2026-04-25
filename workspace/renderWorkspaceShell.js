@@ -8,39 +8,30 @@ export function renderWorkspaceShell() {
           <p class="topbar__eyebrow">RWK</p>
           <h1 class="topbar__title">Operational workspace</h1>
           <p class="topbar__subtitle">
-            Spatial review, refinement, and boundary-driven operational inspection.
+            Spatial review, refinement, and boundary-driven inspection.
           </p>
         </div>
 
-        <div class="topbar__status" id="headerResultPill" aria-live="polite">
-          <span id="headerResultCount" class="topbar__status-count">0 coordinates</span>
-          <span id="headerResultMeta" class="topbar__status-meta">Waiting for filters</span>
-        </div>
+        <div class="topbar__mobile-row">
+          <div class="topbar__status" id="headerResultPill" aria-live="polite">
+            <span id="headerResultCount" class="topbar__status-count">0 coordinates</span>
+            <span id="headerResultMeta" class="topbar__status-meta">Waiting for filters</span>
+          </div>
 
-        <div class="topbar__actions">
-          <button
-            id="backToLauncherButton"
-            class="button"
-            type="button"
-            aria-label="Back to launcher"
-          >
-            Back to launcher
-          </button>
+          <div class="topbar__actions">
+            <button
+              id="backToLauncherButton"
+              class="button topbar__back-button"
+              type="button"
+              aria-label="Back to launcher"
+            >
+              Back to launcher
+            </button>
+          </div>
         </div>
       </header>
 
       <main class="layout">
-        <section class="map-column" aria-label="Map and diagnostics">
-          <section class="map-section" aria-label="Map section">
-            <div id="map" aria-label="Map"></div>
-          </section>
-
-          <section class="debug-strip" aria-labelledby="debugCardTitle">
-            <h2 id="debugCardTitle" class="debug-strip__title">Debug</h2>
-            <pre id="debugOutput" class="debug-output">Starting...</pre>
-          </section>
-        </section>
-
         <aside class="panel" aria-label="Workspace controls">
           <section class="panel-card" aria-labelledby="filtersCardTitle">
             <h2 id="filtersCardTitle" class="panel-card__title">Population filters</h2>
@@ -104,6 +95,17 @@ export function renderWorkspaceShell() {
             </div>
           </section>
         </aside>
+
+        <section class="map-column" aria-label="Map and diagnostics">
+          <section class="map-section" aria-label="Map section">
+            <div id="map" aria-label="Map"></div>
+          </section>
+
+          <section class="debug-strip" aria-labelledby="debugCardTitle">
+            <h2 id="debugCardTitle" class="debug-strip__title">Debug</h2>
+            <pre id="debugOutput" class="debug-output">Starting...</pre>
+          </section>
+        </section>
       </main>
     </div>
   `;

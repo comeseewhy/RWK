@@ -8,7 +8,10 @@ import {
   initWorkspaceMap,
   ensureWorkspaceLayers,
   clearWorkspaceLayers,
-  fitWorkspaceToData
+  createBoundsFromGeoJson,
+  createBoundsFromGeoJsonFeatures,
+  createBoundsFromRows,
+  fitWorkspaceToBounds
 } from "./mapCore.js";
 import { computeWorkspaceView } from "./filters.js";
 import {
@@ -38,7 +41,7 @@ export function createWorkspaceController(deps = {}) {
   let ui = null;
   let debug = null;
   let isInitialized = false;
-  let lastProjectBounds = null;
+  let projectBounds = null;
 
   async function init({
     root = document,
@@ -85,6 +88,7 @@ export function createWorkspaceController(deps = {}) {
 
       state.runtime = projectRuntimeForWorkspace(rawRuntime);
       state.boundaryIndex = createBoundaryIndex(state.runtime.boundariesGeojson);
+      projectBounds = buildProjectBounds();
 
       applyBridgedConfig();
       normalizeCurrentStateForPanelModel();
@@ -92,7 +96,7 @@ export function createWorkspaceController(deps = {}) {
 
       renderWorkspaceRuntimeStatus(ui, state.runtime.summary);
       renderWorkspaceFilters(ui, state);
-      refreshView({ fitMode: "initial" });
+      refreshView({ cameraMode: "initial" });
 
       isInitialized = true;
       debug.log("Workspace initialized");
@@ -121,22 +125,22 @@ export function createWorkspaceController(deps = {}) {
     bindWorkspacePanelEvents(ui, {
       onToggleDay(dayKey) {
         toggleArrayValueSafe(state.refinements.days, dayKey);
-        refreshView({ fitMode: getBoundaryAwareFitMode() });
+        refreshView({ cameraMode: "preserve" });
       },
 
       onToggleAppointmentType(appointmentType) {
         toggleArrayValueSafe(state.refinements.appointmentTypes, appointmentType);
-        refreshView({ fitMode: getBoundaryAwareFitMode() });
+        refreshView({ cameraMode: "preserve" });
       },
 
       onToggleOriginType(originType) {
         toggleArrayValueSafe(state.refinements.originTypes, originType);
-        refreshView({ fitMode: "preserve" });
+        refreshView({ cameraMode: "preserve" });
       },
 
       onClearBoundary() {
         state.selection.boundaryKeys = [];
-        refreshView({ fitMode: "project-subset" });
+        refreshView({ cameraMode: "project" });
       }
     });
   }
@@ -181,6 +185,18 @@ export function createWorkspaceController(deps = {}) {
     if (!Array.isArray(state.refinements.appointmentTypes)) {
       state.refinements.appointmentTypes = [];
     }
+
+    if (!Array.isArray(state.refinements.days)) {
+      state.refinements.days = [];
+    }
+
+    if (!Array.isArray(state.refinements.originTypes)) {
+      state.refinements.originTypes = [];
+    }
+
+    if (!Array.isArray(state.selection.boundaryKeys)) {
+      state.selection.boundaryKeys = [];
+    }
   }
 
   function applyConfig(config = null) {
@@ -196,10 +212,14 @@ export function createWorkspaceController(deps = {}) {
       }`
     );
 
-    refreshView({ fitMode: getBoundaryAwareFitMode() });
+    refreshView({
+      cameraMode: state.selection.boundaryKeys.length > 0
+        ? "selected-boundaries"
+        : "project"
+    });
   }
 
-  function refreshView({ fitMode = "active-subset" } = {}) {
+  function refreshView({ cameraMode = "preserve" } = {}) {
     if (!state.runtime) {
       debug?.log("Refresh skipped:no runtime");
       return;
@@ -221,8 +241,6 @@ export function createWorkspaceController(deps = {}) {
       ...state.results,
       ...view.counts
     };
-
-    lastProjectBounds = buildProjectSubsetBounds();
 
     clearWorkspaceLayers(state.layers);
     renderBoundaryLayer();
@@ -259,7 +277,7 @@ export function createWorkspaceController(deps = {}) {
       selectedOriginTypes: state.refinements.originTypes.length
     });
 
-    applyMapFit(fitMode);
+    applyMapCamera(cameraMode);
 
     debug?.log(
       [
@@ -272,6 +290,7 @@ export function createWorkspaceController(deps = {}) {
         `days=${state.refinements.days.length}`,
         `appointments=${state.refinements.appointmentTypes.length}`,
         `originTypes=${state.refinements.originTypes.length}`,
+        `camera=${cameraMode}`,
         `markerSelection=${state.selection.boundaryKeys.length > 0 ? "on" : "off"}`
       ].join(", ")
     );
@@ -316,10 +335,10 @@ export function createWorkspaceController(deps = {}) {
           toggleBoundarySelection(key);
 
           refreshView({
-            fitMode:
+            cameraMode:
               state.selection.boundaryKeys.length > 0
                 ? "selected-boundaries"
-                : "project-subset"
+                : "project"
           });
         });
       }
@@ -340,35 +359,20 @@ export function createWorkspaceController(deps = {}) {
     }
   }
 
-  function applyMapFit(fitMode) {
+  function applyMapCamera(cameraMode) {
     if (!state.map) return;
 
-    if (fitMode === "preserve") return;
+    if (cameraMode === "preserve") {
+      return;
+    }
 
-    if (fitMode === "selected-boundaries" || fitMode === "selected-boundary") {
+    if (cameraMode === "selected-boundaries") {
       fitToSelectedBoundaries();
       return;
     }
 
-    if (fitMode === "project-subset" || fitMode === "initial") {
-      fitToProjectSubset();
-      return;
-    }
-
-    if (fitMode === "active-subset") {
-      if (state.selection.boundaryKeys.length > 0) {
-        fitToSelectedBoundaries();
-        return;
-      }
-
-      if (state.visibleRows.length > 0) {
-        fitWorkspaceToData(state.map, state.visibleRows, {
-          padding: [48, 48]
-        });
-        return;
-      }
-
-      fitToProjectSubset();
+    if (cameraMode === "initial" || cameraMode === "project") {
+      fitToProjectBounds();
     }
   }
 
@@ -376,55 +380,47 @@ export function createWorkspaceController(deps = {}) {
     const features = getSelectedBoundaryFeatures();
 
     if (features.length === 0) {
-      fitToProjectSubset();
+      fitToProjectBounds();
       return;
     }
 
-    const bounds = L.latLngBounds([]);
+    const bounds = createBoundsFromGeoJsonFeatures(features);
 
-    features.forEach((feature) => {
-      const featureBounds = L.geoJSON(feature).getBounds();
-      if (featureBounds?.isValid?.()) {
-        bounds.extend(featureBounds);
-      }
-    });
-
-    if (bounds?.isValid?.()) {
-      state.map.fitBounds(bounds, {
-        paddingTopLeft: [42, 42],
-        paddingBottomRight: [430, 74],
-        maxZoom: 12
-      });
-    }
-  }
-
-  function fitToProjectSubset() {
-    if (lastProjectBounds?.isValid?.()) {
-      state.map.fitBounds(lastProjectBounds, {
-        padding: [44, 44],
-        maxZoom: 12
-      });
+    if (!bounds) {
+      fitToProjectBounds();
       return;
     }
 
-    const boundaryBounds = state.layers.boundaries?.getBounds?.();
-    if (boundaryBounds?.isValid?.()) {
-      fitWorkspaceToData(state.map, boundaryBounds, {
-        padding: [36, 36]
-      });
-    }
+    fitWorkspaceToBounds(state.map, bounds, {
+      mode: "selected-boundaries",
+      maxZoom: getSelectedBoundaryMaxZoom(features.length)
+    });
   }
 
-  function buildProjectSubsetBounds() {
-    const bounds = L.latLngBounds([]);
+  function fitToProjectBounds() {
+    const bounds =
+      projectBounds ||
+      createBoundsFromGeoJson(state.runtime?.boundariesGeojson) ||
+      createBoundsFromRows(state.populationRows) ||
+      createBoundsFromRows(state.runtime?.candidateRows || []);
 
-    state.populationRows.forEach((row) => {
-      if (Number.isFinite(row._latitude) && Number.isFinite(row._longitude)) {
-        bounds.extend([row._latitude, row._longitude]);
-      }
+    if (!bounds) return;
+
+    fitWorkspaceToBounds(state.map, bounds, {
+      mode: "project",
+      maxZoom: 12
     });
+  }
 
-    return bounds.isValid() ? bounds : null;
+  function buildProjectBounds() {
+    return (
+      createBoundsFromGeoJson(state.runtime?.boundariesGeojson) ||
+      createBoundsFromRows(state.runtime?.candidateRows || [])
+    );
+  }
+
+  function getSelectedBoundaryMaxZoom(selectedCount) {
+    return selectedCount > 1 ? 12 : 13;
   }
 
   function getSelectedBoundaryFeatures() {
@@ -450,12 +446,6 @@ export function createWorkspaceController(deps = {}) {
     }
 
     return `${names.length} boundaries selected`;
-  }
-
-  function getBoundaryAwareFitMode() {
-    return state.selection.boundaryKeys.length > 0
-      ? "selected-boundaries"
-      : "active-subset";
   }
 
   function destroyMap() {
